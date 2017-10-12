@@ -1,0 +1,8 @@
+C:\Users\wennx\source\repos\Wennx.CQP.TRPGBot\Bin\Wennx.CQP.CSharpPlugins.TRPGBot.dll
+C:\Users\wennx\source\repos\Wennx.CQP.TRPGBot\Bin\Wennx.CQP.CSharpPlugins.TRPGBot.pdb
+C:\Users\wennx\source\repos\Wennx.CQP.TRPGBot\src\Flexlive.CQP.CSharpPlugins.Demo\obj\Debug\Wennx.CQP.CSharpPlugins.TRPGBot.csprojResolveAssemblyReference.cache
+C:\Users\wennx\source\repos\Wennx.CQP.TRPGBot\src\Flexlive.CQP.CSharpPlugins.Demo\obj\Debug\Wennx.CQP.CSharpPlugins.TRPGBot.FormSettings.resources
+C:\Users\wennx\source\repos\Wennx.CQP.TRPGBot\src\Flexlive.CQP.CSharpPlugins.Demo\obj\Debug\Wennx.CQP.CSharpPlugins.TRPGBot.csproj.GenerateResource.Cache
+C:\Users\wennx\source\repos\Wennx.CQP.TRPGBot\src\Flexlive.CQP.CSharpPlugins.Demo\obj\Debug\Wennx.CQP.CSharpPlugins.TRPGBot.csproj.CoreCompileInputs.cache
+C:\Users\wennx\source\repos\Wennx.CQP.TRPGBot\src\Flexlive.CQP.CSharpPlugins.Demo\obj\Debug\Wennx.CQP.CSharpPlugins.TRPGBot.dll
+C:\Users\wennx\source\repos\Wennx.CQP.TRPGBot\src\Flexlive.CQP.CSharpPlugins.Demo\obj\Debug\Wennx.CQP.CSharpPlugins.TRPGBot.pdb
