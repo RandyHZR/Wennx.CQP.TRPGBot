@@ -317,7 +317,8 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 				if (IniFileHelper.GetStringValue(f.FullName, "CharInfo", "PlayerID", "") == QQid.ToString())
 				{
 					menu.Add(IniFileHelper.GetStringValue(f.FullName, "CharInfo", "CharID", "0"),
-						IniFileHelper.GetStringValue(f.FullName, "CharInfo", "CharName", "Unnamed"));
+						IniFileHelper.GetStringValue(f.FullName, "CharInfo", "CharName", "Unnamed")
+						+"--"+ IniFileHelper.GetStringValue(f.FullName, "CharInfo", "CharDesc", "Unknown"));
 				}
 			}
 			string m = CQ.CQCode_At(QQid) + " 可用角色：\n";
@@ -336,7 +337,10 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 			{
 				if (IniFileHelper.GetStringValue(f.FullName, "CharInfo", "CharID", "") == selection)
 				{
-					CharBinding.Add(QQid, f.FullName);
+					if (CharBinding.ContainsKey(QQid))
+						CharBinding[QQid] = f.FullName;
+					else
+						CharBinding.Add(QQid, f.FullName);
 				}
 			}
 			CQ.SendGroupMessage(GroupID, string.Format("{0} 绑定了角色 {1}", CQ.CQCode_At(QQid),
@@ -385,7 +389,7 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 					rollstr = rollstr.Replace(str.Split('=')[0], str.Split('=')[1]);
 				}
 			}
-			string[] substr = rollstr.Split(';');
+			string[] substr = rollstr.Split(':');
 			string[] rsn;
 			rsn = new Regex(".r\\s[\\s\\S]*").Match(rollstr).ToString().Split(' ');
 			foreach (string s in substr)
@@ -394,13 +398,13 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 				{
 					CQ.SendGroupMessage(GroupID, String.Format("[{0}]{1}：{2}",
 						IniFileHelper.GetStringValue(CharBinding[QQid].ToString(), "CharInfo", "CharName", CQ.CQCode_At(QQid)),
-						rsn[2], Tools.Dice(s)));
+						rsn[2], Tools.Dice(s.Replace("[", "&#91;").Replace("]", "&#93;"))));
 				}
 				else
 				{
 					CQ.SendGroupMessage(GroupID, String.Format("[{0}]{1}：{2}",
 						IniFileHelper.GetStringValue(CharBinding[QQid].ToString(), "CharInfo", "CharName", CQ.CQCode_At(QQid)),
-						orirsn, Tools.Dice(s)));
+						orirsn, Tools.Dice(s.Replace("[", "&#91;").Replace("]", "&#93;"))));
 				}
 			}
 
@@ -478,6 +482,8 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 
 	class Tools
 	{
+		static Random rd = new Random();
+
 		static public void SendDebugMessage(string msg)
 		{
 			CQ.SendPrivateMessage(495258764, msg);
@@ -487,7 +493,7 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 		{
 			string str = "", rtstr = "";
 			string[] spl;
-			Random rd = new Random();
+			
 			Dictionary<int, int> roll = new Dictionary<int, int>();
 			Regex d = new Regex("((\\+|\\-)?[0-9]*(d[0-9]+)((&#91;\\S+?&#93;)?)|(\\+|\\-)[0-9]+)((&#91;\\S+?&#93;)?)");
 			Regex num = new Regex("(?<sign>(\\+|\\-))[0-9]*d");
@@ -520,7 +526,7 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 				if (spl.Length == 1) j = 1;
 				for (i = 0; i < j; i++)
 				{
-					r.Add(rd.Next(1, int.Parse(spl[spl.Length - 1])));
+					r.Add(rd.Next(1, int.Parse(spl[spl.Length - 1]) + 1));
 					n += r[i];
 				}
 
