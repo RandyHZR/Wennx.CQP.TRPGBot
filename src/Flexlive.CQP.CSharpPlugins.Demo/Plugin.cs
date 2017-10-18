@@ -23,7 +23,7 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 			// 不要在此添加其它初始化代码，插件初始化请写在Startup方法中。
 
 			this.Name = "TRPG Bot";
-			this.Version = new Version("0.0.1.2");
+			this.Version = new Version("0.0.2.3");
 			this.Author = "Wennx";
 			this.Description = "TRPG综合Bot";
 		}
@@ -283,6 +283,16 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 						Roll(QQid, msg);
 					}
 					break;
+				case ".rs":
+					if (CharBinding.ContainsKey(QQid))
+					{
+						SideRoll(QQid, msg);
+					}
+					else
+					{
+						Roll(QQid, msg);
+					}
+					break;
 				case ".csel":
 					if (msgstr.Length == 1)
 					{
@@ -299,10 +309,16 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 						CharModify(QQid, msgstr[1], msgstr[2]);
 					}
 					break;
-				case ".cdel":
+				case ".cdis":
+					CharDisbinding(QQid);
 					break;
 				case ".m":
-
+					break;
+				case ".ar":
+					if (msgstr.Length == 2)
+					{
+						AllRoll(msgstr[1]);
+					}
 					break;
 
 			}
@@ -345,6 +361,12 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 			}
 			CQ.SendGroupMessage(GroupID, string.Format("{0} 绑定了角色 {1}", CQ.CQCode_At(QQid),
 				IniFileHelper.GetStringValue(CharBinding[QQid].ToString(), "CharInfo", "CharName", "")));
+		}
+
+		public void CharDisbinding(long QQid)
+		{
+			CharBinding.Remove(QQid);
+			CQ.SendGroupMessage(GroupID, string.Format("{0} 解除绑定了当前角色", CQ.CQCode_At(QQid)));
 		}
 
 		public void CharModify(long QQid, string key, string value)
@@ -391,28 +413,95 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 			}
 			string[] substr = rollstr.Split(':');
 			string[] rsn;
+			string msg = "";
 			rsn = new Regex(".r\\s[\\s\\S]*").Match(rollstr).ToString().Split(' ');
+			if (rsn.Length > 2)
+			{
+				msg += String.Format("[{0}]{1}：",
+						IniFileHelper.GetStringValue(CharBinding[QQid].ToString(), "CharInfo", "CharName", CQ.CQCode_At(QQid)),
+						rsn[2]);
+			}
+			else
+			{
+				msg += String.Format("[{0}]{1}：",
+						IniFileHelper.GetStringValue(CharBinding[QQid].ToString(), "CharInfo", "CharName", CQ.CQCode_At(QQid)),
+						orirsn);
+			}
 			foreach (string s in substr)
 			{
-				if (rsn.Length > 2)
+				if (substr.Length > 1) msg += "\n";
+				msg += Tools.Dice(s.Replace("[", "&#91;").Replace("]", "&#93;"));
+				
+			}
+			CQ.SendGroupMessage(GroupID, msg);
+		}
+
+		public void SideRoll(long QQid, string rollstr)
+		{
+			string orirsn = rollstr.Replace(".rs ", "");
+			if (CharBinding.ContainsKey(QQid))
+			{
+
+				foreach (string str in IniFileHelper.GetAllItems(CharBinding[QQid], "SideMarco"))
 				{
-					CQ.SendGroupMessage(GroupID, String.Format("[{0}]{1}：{2}",
-						IniFileHelper.GetStringValue(CharBinding[QQid].ToString(), "CharInfo", "CharName", CQ.CQCode_At(QQid)),
-						rsn[2], Tools.Dice(s.Replace("[", "&#91;").Replace("]", "&#93;"))));
-				}
-				else
-				{
-					CQ.SendGroupMessage(GroupID, String.Format("[{0}]{1}：{2}",
-						IniFileHelper.GetStringValue(CharBinding[QQid].ToString(), "CharInfo", "CharName", CQ.CQCode_At(QQid)),
-						orirsn, Tools.Dice(s.Replace("[", "&#91;").Replace("]", "&#93;"))));
+					rollstr = rollstr.Replace(str.Split('=')[0], str.Split('=')[1]);
 				}
 			}
+			string[] substr = rollstr.Split(':');
+			string[] rsn;
+			string msg = "";
+			rsn = new Regex(".rs\\s[\\s\\S]*").Match(rollstr).ToString().Split(' ');
+			if (rsn.Length > 2)
+			{
+				msg += String.Format("[{0}]{1}-{2}：",
+						IniFileHelper.GetStringValue(CharBinding[QQid].ToString(), "CharInfo", "CharName", CQ.CQCode_At(QQid)),
+						IniFileHelper.GetStringValue(CharBinding[QQid].ToString(), "SideMarco", "SideName", "???"),
+						rsn[2]);
+			}
+			else
+			{
+				msg += String.Format("[{0}]{1}-{2}：",
+						IniFileHelper.GetStringValue(CharBinding[QQid].ToString(), "CharInfo", "CharName", CQ.CQCode_At(QQid)),
+						IniFileHelper.GetStringValue(CharBinding[QQid].ToString(), "SideMarco", "SideName", "???"),
+						orirsn);
+			}
+			foreach (string s in substr)
+			{
+				if (substr.Length > 1) msg += "\n";
+				msg += Tools.Dice(s.Replace("[", "&#91;").Replace("]", "&#93;"));
 
+			}
+			CQ.SendGroupMessage(GroupID, msg);
 		}
 
 		public void SetDM()
 		{
 
+		}
+
+		public void AllRoll(string key)
+		{
+			string msg = "全体 "+key+" 检定结果为：";
+			string rollstr;
+			string[] substr;
+			foreach (KeyValuePair<long, string> c in CharBinding)
+			{
+				rollstr = key;
+				foreach (string str in IniFileHelper.GetAllItems(c.Value, "CharMarco"))
+				{
+					rollstr = rollstr.Replace(str.Split('=')[0], str.Split('=')[1]);
+				}
+				substr = rollstr.Split(':');
+				msg += String.Format("\n[{0}]：",
+						IniFileHelper.GetStringValue(c.Value.ToString(), "CharInfo", "CharName", CQ.CQCode_At(c.Key)));
+				foreach (string s in substr)
+				{
+					if (substr.Length > 1) msg += "\n";
+					msg += Tools.Dice(s.Replace("[", "&#91;").Replace("]", "&#93;"));
+
+				}
+			}
+			CQ.SendGroupMessage(GroupID, msg);
 		}
 
 		public void Round()
