@@ -23,7 +23,7 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 			// 不要在此添加其它初始化代码，插件初始化请写在Startup方法中。
 
 			this.Name = "TRPG Bot";
-			this.Version = new Version("0.0.2.3");
+			this.Version = new Version("0.0.2.5");
 			this.Author = "Wennx";
 			this.Description = "TRPG综合Bot";
 		}
@@ -309,10 +309,23 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 						CharModify(QQid, msgstr[1], msgstr[2]);
 					}
 					break;
+				case ".sset":
+					if (msgstr.Length == 3)
+					{
+						SideModify(QQid, msgstr[1], msgstr[2]);
+					}
+					break;
+				case ".mset":
+					if (msgstr.Length == 3)
+					{
+						MemorySet(QQid, msgstr[1], msgstr[2]);
+					}
+					break;
 				case ".cdis":
 					CharDisbinding(QQid);
 					break;
 				case ".m":
+					Memory(QQid, msg);
 					break;
 				case ".ar":
 					if (msgstr.Length == 2)
@@ -320,8 +333,10 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 						AllRoll(msgstr[1]);
 					}
 					break;
-
 			}
+
+
+			
 		}
 
 		public void CharSelection(long QQid)
@@ -377,27 +392,76 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 				FileStream tmp = File.Open(CQ.GetCSPluginsFolder() + "\\CharSettings\\tmp.ini", FileMode.Create);
 				StreamReader sr = new StreamReader(fs, System.Text.Encoding.Default);
 				StreamWriter sw = new StreamWriter(tmp, System.Text.Encoding.Default);
+				value = value.Replace("&#91;", "[").Replace("&#93;", "]");
 				string str;
 				bool changed = false;
+				bool sectControl = false;
 				while (!sr.EndOfStream)
 				{
 					str = sr.ReadLine();
-					if (str.StartsWith(key + "="))
+					if (str == "[CharMarco]") sectControl = true;
+					if (sectControl && str.StartsWith(key + "="))
 					{
 						str = key + "=" + value;
 						changed = true;
 					}
+					
+					if (sectControl && str.StartsWith("[") && str != "[CharMarco]")
+					{
+						sectControl = false;
+						if (!changed) sw.WriteLine(key + "=" + value);
+					}
 					sw.WriteLine(str);
 				}
-				if (!changed) sw.WriteLine(key + "=" + value);
+				
 				sr.Close();
 				sw.Close();
 				fs.Close();
 				tmp.Close();
 				File.Replace(CQ.GetCSPluginsFolder() + "\\CharSettings\\tmp.ini", CharBinding[QQid], CQ.GetCSPluginsFolder() + "\\CharSettings\\LastChange.bak");
-
+				CQ.SendGroupMessage(GroupID, string.Format("[{0}]{1}已修改为{2}", CQ.CQCode_At(QQid), key, value));
 			}
-			CQ.SendGroupMessage(GroupID, string.Format("[{0}]{1}已修改为{2}", CQ.CQCode_At(QQid), key, value));
+			
+		}
+
+		public void SideModify(long QQid, string key, string value)
+		{
+			if (CharBinding.ContainsKey(QQid))
+			{
+				FileStream fs = File.Open(CharBinding[QQid], FileMode.Open);
+				FileStream tmp = File.Open(CQ.GetCSPluginsFolder() + "\\CharSettings\\tmp.ini", FileMode.Create);
+				StreamReader sr = new StreamReader(fs, System.Text.Encoding.Default);
+				StreamWriter sw = new StreamWriter(tmp, System.Text.Encoding.Default);
+				value = value.Replace("&#91;", "[").Replace("&#93;", "]");
+				string str;
+				bool changed = false;
+				bool sectControl = false;
+				while (!sr.EndOfStream)
+				{
+					str = sr.ReadLine();
+					if (str == "[SideMarco]") sectControl = true;
+					if (sectControl && str.StartsWith(key + "="))
+					{
+						str = key + "=" + value;
+						changed = true;
+					}
+
+					if (sectControl && str.StartsWith("[") && str != "[CharMarco]")
+					{
+						sectControl = false;
+						if (!changed) sw.WriteLine(key + "=" + value);
+					}
+					sw.WriteLine(str);
+				}
+
+				sr.Close();
+				sw.Close();
+				fs.Close();
+				tmp.Close();
+				File.Replace(CQ.GetCSPluginsFolder() + "\\CharSettings\\tmp.ini", CharBinding[QQid], CQ.GetCSPluginsFolder() + "\\CharSettings\\LastChange.bak");
+				CQ.SendGroupMessage(GroupID, string.Format("[{0}]{1}已修改为{2}", CQ.CQCode_At(QQid), key, value));
+			}
+			
 		}
 
 		public void CharRoll(long QQid, string rollstr)
@@ -515,6 +579,71 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 
 		public void Pass(long QQid)
 		{
+
+		}
+
+		public void Memory(long QQid, string msg)
+		{
+			Regex at = new Regex("\\[CQ:at,qq=[0-9]*\\]");
+			string key = at.Replace(msg, "").Replace(" ", "").Replace(".m", "");
+			string rtn = string.Format("{0}, {1}的查询结果为：", CQ.CQCode_At(QQid), key);
+			long qq;
+			foreach (Match m in at.Matches(msg))
+			{
+				qq = long.Parse(m.ToString().Replace("[CQ:at,qq=", "").Replace("]", ""));
+				if (CharBinding.ContainsKey(qq))
+				{
+					rtn += string.Format("\n{0}：{1}",
+						IniFileHelper.GetStringValue(CharBinding[qq], "CharInfo", "CharName", CQ.CQCode_At(qq)),
+						IniFileHelper.GetStringValue(CharBinding[qq], "CharMemo", key, "未找到").Replace(";", "\n").Replace("[", "&#91;").Replace("]", "&#93;"));
+				}
+			}
+			if (at.Matches(msg).Count == 0)
+			{
+				rtn += string.Format("\n{0}：{1}",
+						IniFileHelper.GetStringValue(CharBinding[QQid], "CharInfo", "CharName", CQ.CQCode_At(QQid)),
+						IniFileHelper.GetStringValue(CharBinding[QQid], "CharMemo", key, "未找到").Replace(";", "\n").Replace("[", "&#91;").Replace("]", "&#93;"));
+			}
+			CQ.SendGroupMessage(GroupID, rtn);
+		}
+
+		public void MemorySet(long QQid, string key, string value)
+		{
+			if (CharBinding.ContainsKey(QQid))
+			{
+				FileStream fs = File.Open(CharBinding[QQid], FileMode.Open);
+				FileStream tmp = File.Open(CQ.GetCSPluginsFolder() + "\\CharSettings\\tmp.ini", FileMode.Create);
+				StreamReader sr = new StreamReader(fs, System.Text.Encoding.Default);
+				StreamWriter sw = new StreamWriter(tmp, System.Text.Encoding.Default);
+				value = value.Replace("&#91;", "[").Replace("&#93;", "]");
+				string str;
+				bool changed = false;
+				bool sectControl = false;
+				while (!sr.EndOfStream)
+				{
+					str = sr.ReadLine();
+					if (str == "[CharMemo]") sectControl = true;
+					if (sectControl && str.StartsWith(key + "="))
+					{
+						str = key + "=" + value;
+						changed = true;
+					}
+
+					if (sectControl && str.StartsWith("[") && str != "[CharMemo]")
+					{
+						sectControl = false;
+						if (!changed) sw.WriteLine(key + "=" + value);
+					}
+					sw.WriteLine(str);
+				}
+
+				sr.Close();
+				sw.Close();
+				fs.Close();
+				tmp.Close();
+				File.Replace(CQ.GetCSPluginsFolder() + "\\CharSettings\\tmp.ini", CharBinding[QQid], CQ.GetCSPluginsFolder() + "\\CharSettings\\LastChange.bak");
+				CQ.SendGroupMessage(GroupID, string.Format("[{0}]{1}已修改为{2}", CQ.CQCode_At(QQid), key, value));
+			}
 
 		}
 
