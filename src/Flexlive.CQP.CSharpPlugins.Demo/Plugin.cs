@@ -255,8 +255,15 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 		StreamWriter LogWriter;
 		string LogFile = "";
 
+		Regex CQAT = new Regex("\\[CQ:at,qq=[0-9]*\\]");
+		Regex CQIMG = new Regex("\\[CQ:image,file=\\S*?\\]");
 
+		ExcelPackage ep;
+		ExcelWorksheet LogTable;
+		int RecConter;
 
+		Dictionary<long, Image> face = new Dictionary<long, Image>();
+		Dictionary<long, Color> color = new Dictionary<long, Color>();
 
 
 		Dictionary<long, string> CharBinding = new Dictionary<long, string>();
@@ -410,7 +417,17 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 					, FileMode.Append, FileAccess.Write);
 				LogWriter = new StreamWriter(LogStream);
 
-
+				ep = new ExcelPackage();
+				LogTable = ep.Workbook.Worksheets.Add(LogFile);
+				RecConter = 1;
+				LogTable.Column(1).Width = 12.73d;
+				LogTable.Column(2).Width = 20d;
+				LogTable.Column(3).Width = 67.67d;
+				LogTable.Column(4).Width = 20d;
+				LogTable.Cells[1, 1].Value = "头像";
+				LogTable.Cells[1, 2].Value = "人物\n昵称";
+				LogTable.Cells[1, 3].Value = "记录";
+				LogTable.Cells[1, 4].Value = "时间";
 
 
 				Send(string.Format("=======群日志 {0}=======", msg));
@@ -424,9 +441,7 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 				LogWriter.Close();
 				LogStream.Close();
 
-				FileStream fs = new FileStream(CQ.GetCSPluginsFolder() + "\\LogFiles\\" + LogFile + "-" + GroupID + ".xls", FileMode.Create);
-				fs.Close();
-
+				ep.SaveAs(new FileInfo(CQ.GetCSPluginsFolder() + "\\LogFiles\\" + LogFile + "-" + GroupID + ".xlsx"));
 				LogFile = "";
 				Logging = false;
 			}
@@ -437,11 +452,13 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 
 		public void Log(string msg, long QQid = 0)
 		{
-			msg = msg.Replace("\n", ";;");
-			foreach (Match m in new Regex("\\[CQ:at,qq=[0-9]*\\]").Matches(msg))
+			
+			foreach (Match m in CQAT.Matches(msg))
 			{
-				msg.Replace(m.ToString(), "@" + CQE.GetQQName(long.Parse(m.ToString().Replace("[CQ:at,qq=", "").Replace("]", ""))));
+				msg = msg.Replace(m.ToString(), "@" + CQE.GetQQName(long.Parse(m.ToString().Replace("[CQ:at,qq=", "").Replace("]", ""))));
 			}
+			NewRecord(QQid, msg);
+			msg = msg.Replace("\n", ";;");
 			if (DateTime.Now.Minute != lastTimeStamp.Minute && DateTime.Now.Minute % 10 == 0)
 			{
 				lastTimeStamp = DateTime.Now;
@@ -465,31 +482,76 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 
 		public void NewRecord(long QQid, string msg)
 		{
+			if (msg.StartsWith("(") || msg.StartsWith("（"))
+			{
+				msg = CQIMG.Replace(msg, "");
+				LogTable.Cells[RecConter, 3].Style.Font.Color.SetColor(Color.Gray);
+			}
+			foreach (Match m in CQIMG.Matches(msg))
+			{
+				ImgRecord(QQid, m.ToString().Replace("[CQ:image,file=", "").Replace("]", ""));
+			}
+			msg = CQIMG.Replace(msg, "");
+			RecConter++;
 
+			if (RecConter % 10 == 0)
+			{
+				ep.SaveAs(new FileInfo(CQ.GetCSPluginsFolder() + "\\LogFiles\\" + LogFile + "-" + GroupID + ".xlsx"));
+			}
 		}
 
-		public void GetImage(string imgID)
+		public void ImgRecord(long QQid, string imgID)
+		{
+			RecConter++;
+			Image img = GetImage(imgID);
+			double height = img.Height;
+			var pic = LogTable.Drawings.AddPicture(imgID + RecConter, GetImage(imgID));
+			if (img.Width > 1024)
+			{
+				height = 770d * img.Height / img.Width;
+			}
+			else
+			{
+				height = img.Height / 1.33;
+			}
+			if (height > 75)
+				LogTable.Row(RecConter).Height = height;
+			else
+				LogTable.Row(RecConter).Height = 75;
+			SetFace(QQid);
+			if (img.Width > 1024)
+			{
+				pic.SetPosition(RecConter - 1, 0, 2, 0);
+				pic.SetSize(1024, 1024 * img.Height / img.Width);
+			}
+			else
+			{
+				pic.SetPosition(RecConter - 1, 0, 2, 0);
+			}
+		}
+
+		public void SetFace(long QQid)
+		{
+			if (!face.ContainsKey(QQid)) face.Add(QQid, CQE.GetQQFace(QQid));
+			var pic = LogTable.Drawings.AddPicture(QQid.ToString() + RecConter, face[QQid]);
+			pic.SetSize(100,100);
+			pic.SetPosition(RecConter - 1, 0, 0, 0);
+		}
+
+		public Image GetImage(string imgID)
 		{
 			
 			DirectoryInfo di = new DirectoryInfo(CQ.GetCQAppFolder() + "\\data\\image\\");
-			string url = "";
-			if (di.GetFiles(imgID + "*.cqimg").Length > 0) url = IniFileHelper.GetStringValue(di.GetFiles(imgID)[0].ToString(), "image", "url", "");
-			if (url == "") return;
+			FileInfo fi = di.GetFiles(imgID + "*.cqimg")[0];
+			string url = IniFileHelper.GetStringValue(fi.FullName, "image", "url", "");
 			WebRequest request = WebRequest.Create(url);
 			WebResponse response = request.GetResponse();
 			Stream reader = response.GetResponseStream();
-			FileStream writer = new FileStream("x:\\pic.jpg", FileMode.OpenOrCreate, FileAccess.Write);
-			byte[] buff = new byte[512];
-			int c = 0; //实际读取的字节数
-			while ((c = reader.Read(buff, 0, buff.Length)) > 0)
-			{
-				writer.Write(buff, 0, c);
-			}
-			writer.Close();
-			writer.Dispose();
+			Image img = Image.FromStream(reader);
 			reader.Close();
 			reader.Dispose();
 			response.Close();
+			return img;
 		}
 
 		public void CharSelection(long QQid)
