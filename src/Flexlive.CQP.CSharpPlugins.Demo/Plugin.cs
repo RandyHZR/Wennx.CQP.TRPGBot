@@ -261,9 +261,13 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 		ExcelPackage ep;
 		ExcelWorksheet LogTable;
 		int RecConter;
+		long CurrentLogUser;
 
 		Dictionary<long, Image> face = new Dictionary<long, Image>();
 		Dictionary<long, Color> color = new Dictionary<long, Color>();
+		List<Color> unusedColor
+			= new List<Color>() { Color.Aquamarine,Color.MediumPurple,Color.LimeGreen,Color.Chocolate,Color.Crimson,
+			Color.Orange,Color.Gold,Color.OrangeRed,Color.HotPink,Color.SteelBlue,Color.Tan,Color.Wheat,Color.DodgerBlue};
 
 
 		Dictionary<long, string> CharBinding = new Dictionary<long, string>();
@@ -312,6 +316,9 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 			string[] msgstr = msg.Replace("。", ".").Split(' ');
 			switch (msgstr[0].ToLower())
 			{
+				case ".reset":
+					if (QQid == Owner) Sessions.Remove(GroupID);
+					break;
 				case ".r":
 					if (CharBinding.ContainsKey(QQid))
 					{
@@ -424,10 +431,16 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 				LogTable.Column(2).Width = 20d;
 				LogTable.Column(3).Width = 67.67d;
 				LogTable.Column(4).Width = 20d;
+				LogTable.Column(2).Style.WrapText = true;
+				LogTable.Column(3).Style.WrapText = true;
 				LogTable.Cells[1, 1].Value = "头像";
-				LogTable.Cells[1, 2].Value = "人物\n昵称";
+				LogTable.Cells[1, 2].Value = "人物/昵称";
 				LogTable.Cells[1, 3].Value = "记录";
 				LogTable.Cells[1, 4].Value = "时间";
+				if (!color.ContainsKey(0)) color.Add(0, Color.Black);
+				List<Color> unusedColor
+					= new List<Color>() { Color.Aquamarine,Color.MediumPurple,Color.LimeGreen,Color.Chocolate,Color.Crimson,
+					Color.Orange,Color.Gold,Color.OrangeRed,Color.HotPink,Color.SteelBlue,Color.Tan,Color.Wheat,Color.DodgerBlue};
 
 
 				Send(string.Format("=======群日志 {0}=======", msg));
@@ -458,7 +471,7 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 				msg = msg.Replace(m.ToString(), "@" + CQE.GetQQName(long.Parse(m.ToString().Replace("[CQ:at,qq=", "").Replace("]", ""))));
 			}
 			NewRecord(QQid, msg);
-			msg = msg.Replace("\n", ";;");
+			/*msg = msg.Replace("\n", ";;");
 			if (DateTime.Now.Minute != lastTimeStamp.Minute && DateTime.Now.Minute % 10 == 0)
 			{
 				lastTimeStamp = DateTime.Now;
@@ -477,7 +490,7 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 			else
 			{
 				LogWriter.WriteLine(string.Format("{0}:{1}", CQE.GetQQName(QQid), msg));
-			}
+			}*/
 		}
 
 		public void NewRecord(long QQid, string msg)
@@ -492,8 +505,23 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 				ImgRecord(QQid, m.ToString().Replace("[CQ:image,file=", "").Replace("]", ""));
 			}
 			msg = CQIMG.Replace(msg, "");
+			if (msg == "") return;
 			RecConter++;
-
+			LogTable.Cells[RecConter, 2].Value = CharBinding.ContainsKey(QQid)
+						? IniFileHelper.GetStringValue(CharBinding[QQid], "CharInfo", "CharName", QQid == 0 ? "=======" : CQE.GetQQName(QQid)) 
+						: CQE.GetQQName(QQid);
+			LogTable.Cells[RecConter, 3].Value = msg;
+			if (msg.StartsWith("\"") || msg.StartsWith("“") || msg.StartsWith("”")) LogTable.Cells[RecConter, 3].Style.Font.Bold = true;
+			SetColor(QQid);
+			if(msg.StartsWith("(")||msg.StartsWith("（")) LogTable.Cells[RecConter, 3].Style.Font.Color.SetColor(Color.Gray);
+			
+			LogTable.Row(RecConter).CustomHeight = false;
+			if (LogTable.Row(RecConter).Height < 75 && (CurrentLogUser != QQid || QQid != 0)) 
+			{
+				LogTable.Row(RecConter).CustomHeight = true;
+				LogTable.Row(RecConter).Height = 75;
+			}
+			SetFace(QQid);
 			if (RecConter % 10 == 0)
 			{
 				ep.SaveAs(new FileInfo(CQ.GetCSPluginsFolder() + "\\LogFiles\\" + LogFile + "-" + GroupID + ".xlsx"));
@@ -519,6 +547,10 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 			else
 				LogTable.Row(RecConter).Height = 75;
 			SetFace(QQid);
+			SetColor(QQid);
+			LogTable.Cells[RecConter, 2].Value = CharBinding.ContainsKey(QQid)
+				? IniFileHelper.GetStringValue(CharBinding[QQid], "CharInfo", "CharName"
+				, QQid == 0 ? "=======" : CQE.GetQQName(QQid)) : QQid == 0 ? "=======" : CQE.GetQQName(QQid);
 			if (img.Width > 1024)
 			{
 				pic.SetPosition(RecConter - 1, 0, 2, 0);
@@ -533,9 +565,33 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 		public void SetFace(long QQid)
 		{
 			if (!face.ContainsKey(QQid)) face.Add(QQid, CQE.GetQQFace(QQid));
+			if (CurrentLogUser == QQid || QQid == 0) return;
+			CurrentLogUser = QQid;
 			var pic = LogTable.Drawings.AddPicture(QQid.ToString() + RecConter, face[QQid]);
-			pic.SetSize(100,100);
 			pic.SetPosition(RecConter - 1, 0, 0, 0);
+			pic.SetSize(90, 100);
+		}
+
+		public void SetColor(long QQid)
+		{
+			if (!CharBinding.ContainsKey(QQid) && !color.ContainsKey(QQid)) color.Add(QQid, Color.Gray);
+			else if (!color.ContainsKey(QQid))
+			{
+				color.Add(QQid
+				, Color.FromName(IniFileHelper.GetStringValue(CharBinding[QQid], "CharInfo", "LogColor", "White")));
+			}
+			else if (color[QQid] == Color.Gray && CharBinding.ContainsKey(QQid))
+			{
+				color[QQid] = Color.FromName(IniFileHelper.GetStringValue(CharBinding[QQid], "CharInfo", "LogColor", "White"));
+			}
+			if (color[QQid] == Color.White)
+			{
+				color[QQid] = unusedColor[rd.Next(0,unusedColor.Count)];
+				unusedColor.Remove(color[QQid]);
+			}
+			LogTable.Cells[RecConter, 2].Style.Font.Color.SetColor(color[QQid]);
+			LogTable.Cells[RecConter, 3].Style.Font.Color.SetColor(color[QQid]);
+
 		}
 
 		public Image GetImage(string imgID)
@@ -898,10 +954,10 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 
 		public void SetDM(long QQid, string msg)
 		{
+			Tools.SendDebugMessage("SetDM Called");
 			if (!Admin.Contains(QQid)) return;
-			Regex at = new Regex("\\[CQ:at,qq=[0-9]*\\]");
 			long qq;
-			foreach (Match m in at.Matches(msg))
+			foreach (Match m in CQAT.Matches(msg))
 			{
 				qq = long.Parse(m.ToString().Replace("[CQ:at,qq=", "").Replace("]", ""));
 				if (Admin.Contains(qq) && Owner != qq)
