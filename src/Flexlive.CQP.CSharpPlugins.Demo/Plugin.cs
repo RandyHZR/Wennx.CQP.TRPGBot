@@ -5,7 +5,9 @@ using System.Data;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
-using NPOI.HSSF.UserModel;
+using OfficeOpenXml;
+using System.Drawing;
+using System.Net;
 
 namespace Wennx.CQP.CSharpPlugins.TRPGBot
 {
@@ -253,8 +255,8 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 		StreamWriter LogWriter;
 		string LogFile = "";
 
-		HSSFWorkbook LogTable;
-		Dictionary<long, HSSFFont> NormalFont = new Dictionary<long, HSSFFont>();
+
+
 
 
 		Dictionary<long, string> CharBinding = new Dictionary<long, string>();
@@ -407,6 +409,10 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 				LogStream = new FileStream(CQ.GetCSPluginsFolder() + "\\LogFiles\\" + LogFile + "-" + GroupID + ".txt"
 					, FileMode.Append, FileAccess.Write);
 				LogWriter = new StreamWriter(LogStream);
+
+
+
+
 				Send(string.Format("=======群日志 {0}=======", msg));
 				Send(string.Format("=======群号：{0}=======", GroupID));
 				Send(string.Format("=======发起者：{0}=======", QQid));
@@ -417,18 +423,15 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 				Send("=======记录结束=======");
 				LogWriter.Close();
 				LogStream.Close();
+
 				FileStream fs = new FileStream(CQ.GetCSPluginsFolder() + "\\LogFiles\\" + LogFile + "-" + GroupID + ".xls", FileMode.Create);
-				LogTable.Write(fs);
 				fs.Close();
+
 				LogFile = "";
 				Logging = false;
 			}
 		}
 
-		public void TbLog(long QQid, string msg)
-		{
-
-		}
 
 		DateTime lastTimeStamp = DateTime.Now;
 
@@ -458,6 +461,35 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 			{
 				LogWriter.WriteLine(string.Format("{0}:{1}", CQE.GetQQName(QQid), msg));
 			}
+		}
+
+		public void NewRecord(long QQid, string msg)
+		{
+
+		}
+
+		public void GetImage(string imgID)
+		{
+			
+			DirectoryInfo di = new DirectoryInfo(CQ.GetCQAppFolder() + "\\data\\image\\");
+			string url = "";
+			if (di.GetFiles(imgID + "*.cqimg").Length > 0) url = IniFileHelper.GetStringValue(di.GetFiles(imgID)[0].ToString(), "image", "url", "");
+			if (url == "") return;
+			WebRequest request = WebRequest.Create(url);
+			WebResponse response = request.GetResponse();
+			Stream reader = response.GetResponseStream();
+			FileStream writer = new FileStream("x:\\pic.jpg", FileMode.OpenOrCreate, FileAccess.Write);
+			byte[] buff = new byte[512];
+			int c = 0; //实际读取的字节数
+			while ((c = reader.Read(buff, 0, buff.Length)) > 0)
+			{
+				writer.Write(buff, 0, c);
+			}
+			writer.Close();
+			writer.Dispose();
+			reader.Close();
+			reader.Dispose();
+			response.Close();
 		}
 
 		public void CharSelection(long QQid)
