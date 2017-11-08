@@ -63,21 +63,19 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 		/// <param name="font">字体。</param>
 		public override void PrivateMessage(int subType, int sendTime, long fromQQ, string msg, int font)
 		{
-			/*try
+			try
 			{
 				if (!PrivateSession.Sessions.ContainsKey(fromQQ))
 				{
 					PrivateSession.Sessions.Add(fromQQ, new PrivateSession(fromQQ));
 				}
-				if (msg.StartsWith("."))
-				{
-					PrivateSession.Sessions[fromQQ].PrivateMessageHandler(msg);
-				}
+				PrivateSession.Sessions[fromQQ].PrivateMessageHandler(msg);
+				
 			}
 			catch (Exception e)
 			{
 				Tools.SendDebugMessage(e.ToString());
-			}*/
+			}
 		}
 
 		/// <summary>
@@ -224,19 +222,49 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 	{
 		static public Dictionary<long, PrivateSession> Sessions = new Dictionary<long, PrivateSession>();
 		long QQid;
-		long group = 0;
+		RandomCreator rc;
+		public bool rcInput = false;
 
 		public PrivateSession(long id)
 		{
 			QQid = id;
 		}
 
+		public void Send(string msg)
+		{
+			CQ.SendPrivateMessage(QQid, msg);
+		}
+
 		public void PrivateMessageHandler(string msg)
 		{
+			if (rcInput)
+			{
+				rc.Build(msg);
+				return;
+			}
 			string[] msgstr = msg.Split(' ');
 			switch (msgstr[0])
 			{
+				case ".r":
+					Roll(msg);
+					break;
+				case ".rc":
+					rc = new RandomCreator(msgstr[1], this);
+					rc.Build();
+					break;
+			}
+		}
 
+		public void Roll(string rollstr)
+		{
+			string[] rsn = new Regex(".r\\s[\\s\\S]*").Match(rollstr).ToString().Split(' ');
+			if (rsn.Length > 2)
+			{
+				Send(String.Format("{0}：{1}",  rsn[2], Tools.Dice(rollstr)));
+			}
+			else
+			{
+				Send(String.Format("{0}", Tools.Dice(rollstr)));
 			}
 		}
 	}
@@ -328,6 +356,9 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 					{
 						Roll(QQid, msg);
 					}
+					break;
+				case ".s":
+					Search(QQid, msg);
 					break;
 				case ".rs":
 					if (CharBinding.ContainsKey(QQid))
@@ -608,6 +639,62 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 			reader.Dispose();
 			response.Close();
 			return img;
+		}
+		Dictionary<long, List<FileInfo>> SearchMenu = new Dictionary<long, List<FileInfo>>();
+		public void Search(long QQid, string msg)
+		{
+			msg = msg.Replace(".s", "");
+			string[] msgs = msg.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+			DirectoryInfo d = new DirectoryInfo(CQ.GetCSPluginsFolder() + "\\Data");
+			if (!SearchMenu.ContainsKey(QQid) || !Regex.IsMatch(msgs[0], "[0-9]+") || int.Parse(msgs[0]) > SearchMenu[QQid].Count) 
+			{
+				SearchMenu.Remove(QQid);
+				List<FileInfo> NewMenu = new List<FileInfo>();
+				SearchMenu.Add(QQid, new List<FileInfo>(d.GetFiles("*" + msgs[0] + "*.jpg",SearchOption.AllDirectories)));
+				
+				foreach (FileInfo fi in SearchMenu[QQid])
+				{
+					foreach (string str in msgs)
+					{
+						if (!fi.Name.Contains(str))
+						{
+							goto bk;
+						}
+					}
+					NewMenu.Add(fi);
+					bk: continue;
+				}
+
+				if (NewMenu.Count == 1)
+				{
+					File.Copy(NewMenu[0].FullName, CQ.GetCQAppFolder() + "\\data\\image\\" + NewMenu[0].Name, true);
+					Send(CQ.CQCode_Image(NewMenu[0].Name));
+					SearchMenu.Remove(QQid);
+				}
+				else
+				{
+					string rtmsg = string.Format("[{0}]查找到了{1}项:", CQ.CQCode_At(QQid), NewMenu.Count);
+					if (NewMenu.Count > 10)
+					{
+						rtmsg += "\n匹配项目过多，仅显示前10项，建议更换或添加关键字";
+						NewMenu.RemoveRange(10, NewMenu.Count - 10);
+					}
+					SearchMenu[QQid] = NewMenu;
+					foreach (FileInfo fi in NewMenu)
+					{
+						rtmsg += "\n" + (NewMenu.IndexOf(fi) + 1).ToString() + "." + fi.Name.Replace(fi.Extension, "");
+					}
+					rtmsg += "\n请输入.s+序号";
+					Send(rtmsg);
+				}
+			}
+			else
+			{
+				FileInfo sel = SearchMenu[QQid][int.Parse(msgs[0]) - 1];
+				File.Copy(sel.FullName, CQ.GetCQAppFolder() + "\\data\\image\\" + sel.Name, true);
+				Send(CQ.CQCode_Image(sel.Name.Replace(",", "&#44;")));
+				SearchMenu.Remove(QQid);
+			}
 		}
 
 		public void CharSelection(long QQid)
@@ -1459,6 +1546,80 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 			rollstr = rtstr;
 			return sum;
 			
+		}
+	}
+
+	class RandomCreator
+	{
+		PrivateSession pSession;
+		string MainFile;
+		string BuildStr;
+		string InputKey;
+		Dictionary<string, string> Inputs = new Dictionary<string, string>();
+		Dictionary<string, int> Nums = new Dictionary<string, int>();
+		Regex sp = new Regex("《[\\S\\s]*?》");
+		Regex dc = new Regex("{[\\S\\s]*?}");
+		Random rd = new Random();
+
+		public RandomCreator(string msg, PrivateSession ps)
+		{
+			MainFile = CQ.GetCSPluginsFolder() + @"\RandomCreator\" + msg + ".ini";
+			BuildStr = IniFileHelper.GetStringValue(MainFile, "Info", "Template", "");
+			pSession = ps;
+		}
+
+		static void Intro(string msg)
+		{
+			IniFileHelper.GetStringValue(CQ.GetCSPluginsFolder() + @"\RandomCreator\" + msg + ".ini", "Info", "Intro", "");
+		}
+
+		public void Build(string i = "")
+		{
+			string m;
+			string rp;
+			string d;
+			if (i != "")
+			{
+				Inputs.Add(IniFileHelper.GetStringValue(MainFile, InputKey.Substring(1, InputKey.Length - 2), "Dice", InputKey).Replace("Input:", ""), i);
+				BuildStr = BuildStr.Replace(InputKey, IniFileHelper.GetStringValue(MainFile,
+					InputKey.Substring(1, InputKey.Length - 2), i, ""));
+				InputKey = "";
+				pSession.rcInput = false;
+			}
+
+			while (sp.IsMatch(BuildStr))
+			{
+				m = sp.Match(BuildStr).ToString();
+				rp = m;
+				m = m.Substring(1, m.Length - 2);
+				d = IniFileHelper.GetStringValue(MainFile, m, "Dice", "Input:" + m);
+				if (d.StartsWith("Input:"))
+				{
+					d = d.Replace("Input:", "");
+					if (Inputs.ContainsKey(d))
+					{
+						BuildStr = BuildStr.Replace(rp, IniFileHelper.GetStringValue(MainFile, m, Inputs[d], ""));
+					}
+					else
+					{
+						Input(rp);
+						return;
+					}
+				}
+				else
+				{
+					BuildStr = BuildStr.Replace(rp, IniFileHelper.GetStringValue(MainFile, m
+							, Tools.DiceNum(IniFileHelper.GetStringValue(MainFile, m, "Dice", "")).ToString(), ""));
+				}
+			}
+			pSession.Send(BuildStr.Replace(";;", "\n"));
+		}
+
+		public void Input(string key)
+		{
+			InputKey = key;
+			pSession.Send("请输入" + IniFileHelper.GetStringValue(MainFile, key.Substring(1, key.Length - 2), "Dice","").Replace("Input:","") + "的值");
+			pSession.rcInput = true;
 		}
 
 	}
