@@ -414,7 +414,7 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 					SideMemory(QQid, msg);
 					break;
 				case ".setdm":
-					if (msgstr.Length == 2) SetDM(QQid, msgstr[1]);
+					if (msgstr.Length > 1) SetDM(QQid, msgstr[1]);
 					break;
 				case ".ar":
 					if (msgstr.Length == 2) AllRoll(QQid, msgstr[1]);
@@ -424,6 +424,9 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 					break;
 				case ".help":
 					Help();
+					break;
+				case ".lct":
+					//LogColorTest();
 					break;
 				case ".log":
 					if (msgstr.Length > 1)
@@ -493,6 +496,18 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 
 
 		DateTime lastTimeStamp = DateTime.Now;
+
+		public void LogColorTest()
+		{
+			Logging = false;
+			foreach (KnownColor color in Enum.GetValues(typeof(KnownColor)))
+			{
+				RecConter++;
+				LogTable.Cells[RecConter, 1].Style.Font.Color.SetColor(Color.FromKnownColor(color));
+				LogTable.Cells[RecConter, 1].Value = color.ToString();
+			}
+			Logging = true;
+		}
 
 		public void Log(string msg, long QQid = 0)
 		{
@@ -1041,7 +1056,6 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 
 		public void SetDM(long QQid, string msg)
 		{
-			Tools.SendDebugMessage("SetDM Called");
 			if (!Admin.Contains(QQid)) return;
 			long qq;
 			foreach (Match m in CQAT.Matches(msg))
@@ -1050,12 +1064,12 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 				if (Admin.Contains(qq) && Owner != qq)
 				{
 					Admin.Remove(qq);
-					Send(string.Format("{0}已被取消DM", qq));
+					Send(string.Format("{0}已被取消DM", CQE.GetQQName(qq)));
 				}
 				else
 				{
 					Admin.Add(qq);
-					Send(string.Format("{0}已被设置为DM", qq));
+					Send(string.Format("{0}已被设置为DM", CQE.GetQQName(qq)));
 				}
 				
 			}
@@ -1109,7 +1123,7 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 			string action = msg;
 			if (msg.ToLower() == "go")
 			{
-				Send(GHIGO());
+				if (Admin.Contains(QQid)) Send(GHIGO());
 				return;
 			}
 			else if (Regex.Match(msg, "(d[0-9]+)|(\\+[0-9]+)").Success)
@@ -1255,9 +1269,10 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 	{
 		static Random rd = new Random();
 
-		static public void SendDebugMessage(string msg)
+		static public string SendDebugMessage(string msg)
 		{
 			CQ.SendPrivateMessage(495258764, msg);
+			return msg;
 		}
 
 		static public string Dice(string rollstr)
@@ -1558,7 +1573,10 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 		Dictionary<string, string> Inputs = new Dictionary<string, string>();
 		Dictionary<string, int> Nums = new Dictionary<string, int>();
 		Regex sp = new Regex("《[\\S\\s]*?》");
-		Regex dc = new Regex("{[\\S\\s]*?}");
+		Regex mod = new Regex("\\{\\S*?\\|\\|[\\+\\-][0-9d]+?\\}");
+		Regex set = new Regex("\\{[^\\s{}]*?\\|\\|=[\\+\\-]?[0-9d]+?\\}");
+		Regex res = new Regex("\\{\\S*?\\}");
+		Regex desc = new Regex("\\([\\S\\s]*?\\)");
 		Random rd = new Random();
 
 		public RandomCreator(string msg, PrivateSession ps)
@@ -1566,23 +1584,30 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 			MainFile = CQ.GetCSPluginsFolder() + @"\RandomCreator\" + msg + ".ini";
 			BuildStr = IniFileHelper.GetStringValue(MainFile, "Info", "Template", "");
 			pSession = ps;
+			
 		}
 
-		static void Intro(string msg)
-		{
-			IniFileHelper.GetStringValue(CQ.GetCSPluginsFolder() + @"\RandomCreator\" + msg + ".ini", "Info", "Intro", "");
-		}
 
 		public void Build(string i = "")
 		{
 			string m;
 			string rp;
 			string d;
+			string c;
+			int j;
 			if (i != "")
 			{
-				Inputs.Add(IniFileHelper.GetStringValue(MainFile, InputKey.Substring(1, InputKey.Length - 2), "Dice", InputKey).Replace("Input:", ""), i);
-				BuildStr = BuildStr.Replace(InputKey, IniFileHelper.GetStringValue(MainFile,
-					InputKey.Substring(1, InputKey.Length - 2), i, ""));
+				if (i == "Rnd")
+				{
+					i = rd.Next(1, IniFileHelper.GetAllItemKeys(MainFile, InputKey.Substring(1, InputKey.Length - 2)).Length).ToString();
+				}
+				//Tools.SendDebugMessage("Input=" + i);
+				Inputs.Add(desc.Replace(IniFileHelper.GetStringValue(MainFile, InputKey.Substring(1, InputKey.Length - 2), "Dice", InputKey), "").Replace("Input:", ""), i);
+				BuildStr = new Regex(Regex.Escape(InputKey)).Replace(BuildStr, IniFileHelper.GetStringValue(MainFile, 
+					InputKey.Substring(1, InputKey.Length - 2), i,
+					IniFileHelper.GetStringValue(MainFile, InputKey.Substring(1, InputKey.Length - 2), "Default", "")), 1);
+				//BuildStr = BuildStr.Replace(InputKey, IniFileHelper.GetStringValue(MainFile,
+				//InputKey.Substring(1, InputKey.Length - 2), i, ""));
 				InputKey = "";
 				pSession.rcInput = false;
 			}
@@ -1592,33 +1617,112 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 				m = sp.Match(BuildStr).ToString();
 				rp = m;
 				m = m.Substring(1, m.Length - 2);
+				//Tools.SendDebugMessage(m);
 				d = IniFileHelper.GetStringValue(MainFile, m, "Dice", "Input:" + m);
-				if (d.StartsWith("Input:"))
+				if (m.Contains("×"))
 				{
-					d = d.Replace("Input:", "");
-					if (Inputs.ContainsKey(d))
+					j = Tools.DiceNum("+" + m.Split('×')[0]);
+					m = "《" + m.Split('×')[1] + "》";
+					//Tools.SendDebugMessage(m);
+					d = "";
+					for (; j > 0; j--) 
 					{
-						BuildStr = BuildStr.Replace(rp, IniFileHelper.GetStringValue(MainFile, m, Inputs[d], ""));
+						d += m;
+					}
+					//Tools.SendDebugMessage(d);
+					BuildStr = BuildStr.Replace(rp, d);
+					continue;
+				}
+				if (!m.Contains("=="))
+				{
+					if (d.StartsWith("Input:"))
+					{
+						d = desc.Replace(d.Replace("Input:", ""), "");
+						if (d.Contains("=="))
+						{
+							Inputs.Add(d.Split(new string[] { "==" }, StringSplitOptions.RemoveEmptyEntries)[0]
+								, d.Split(new string[] { "==" }, StringSplitOptions.RemoveEmptyEntries)[1]);
+							d = d.Split(new string[] { "==" }, StringSplitOptions.RemoveEmptyEntries)[0];
+						}
+						if (Inputs.ContainsKey(d))
+						{
+							BuildStr = new Regex(Regex.Escape(rp)).Replace(BuildStr, IniFileHelper.GetStringValue(MainFile, m, 
+								Inputs[d], IniFileHelper.GetStringValue(MainFile, m, "Default", "")), 1);
+							//BuildStr = BuildStr.Replace(rp, IniFileHelper.GetStringValue(MainFile, m, Inputs[d], ""));
+						}
+
+						else
+						{
+							Input(rp);
+							return;
+						}
 					}
 					else
 					{
-						Input(rp);
-						return;
+						BuildStr = new Regex(Regex.Escape(rp)).Replace(BuildStr, IniFileHelper.GetStringValue(MainFile, m, 
+							Tools.DiceNum(IniFileHelper.GetStringValue(MainFile, m, "Dice", "")).ToString(),
+							IniFileHelper.GetStringValue(MainFile, m, "Default", "")), 1);
+						//BuildStr = BuildStr.Replace(rp, IniFileHelper.GetStringValue(MainFile, Tools.SendDebugMessage(m)
+						//, Tools.SendDebugMessage(Tools.DiceNum(IniFileHelper.GetStringValue(MainFile, m, "Dice", "")).ToString()), ""));
 					}
 				}
 				else
 				{
-					BuildStr = BuildStr.Replace(rp, IniFileHelper.GetStringValue(MainFile, m
-							, Tools.DiceNum(IniFileHelper.GetStringValue(MainFile, m, "Dice", "")).ToString(), ""));
+					c = m.Split(new string[] { "==" }, StringSplitOptions.RemoveEmptyEntries)[1];
+					m = m.Split(new string[] { "==" }, StringSplitOptions.RemoveEmptyEntries)[0];
+					BuildStr = new Regex(Regex.Escape(rp)).Replace(BuildStr, IniFileHelper.GetStringValue(MainFile, m,
+						c, IniFileHelper.GetStringValue(MainFile, m, "Default", "")), 1);
 				}
 			}
-			pSession.Send(BuildStr.Replace(";;", "\n"));
+				string[] strs;
+				foreach (Match mt in set.Matches(BuildStr))
+				{
+					strs = mt.ToString().Substring(1, mt.ToString().Length - 2).Split(new string[] { "||=" }, StringSplitOptions.RemoveEmptyEntries);
+					if (Nums.ContainsKey(strs[0]))
+					{
+						Nums[strs[0]] = Tools.DiceNum("+" + strs[1]);
+					}
+					else
+					{
+						Nums.Add(strs[0], Tools.DiceNum("+" + strs[1]));
+					}
+				}
+				BuildStr = set.Replace(BuildStr, "");
+				foreach (Match mt in mod.Matches(BuildStr)) 
+				{
+					strs = mt.ToString().Substring(1, mt.ToString().Length - 2).Split(new string[] { "||" }, StringSplitOptions.RemoveEmptyEntries);
+					if (Nums.ContainsKey(strs[0]))
+					{
+						Nums[strs[0]] = Tools.DiceNum("+" + Nums[strs[0]].ToString() + strs[1]);
+					}
+					else
+					{
+						Nums.Add(strs[0], Tools.DiceNum("+" + strs[1]));
+					}
+				}
+				BuildStr = mod.Replace(BuildStr, "");
+				while (res.IsMatch(BuildStr))
+				{
+					m = res.Match(BuildStr).ToString();
+					if (Nums.ContainsKey(m.Substring(1, m.Length - 2)))
+					{
+						BuildStr = BuildStr.Replace(m, Nums[m.Substring(1, m.Length - 2)].ToString());
+					}
+					else
+					{
+						BuildStr = BuildStr.Replace(m, "0");
+					}
+				
+				
+			}
+
+			pSession.Send(BuildStr.Replace(";;", "\n").Replace("++", "+").Replace("+-", "-"));
 		}
 
 		public void Input(string key)
 		{
 			InputKey = key;
-			pSession.Send("请输入" + IniFileHelper.GetStringValue(MainFile, key.Substring(1, key.Length - 2), "Dice","").Replace("Input:","") + "的值");
+			pSession.Send("请输入" + IniFileHelper.GetStringValue(MainFile, key.Substring(1, key.Length - 2), "Dice", "").Replace("Input:", "").Replace(";;", "\n") + "的值");
 			pSession.rcInput = true;
 		}
 
