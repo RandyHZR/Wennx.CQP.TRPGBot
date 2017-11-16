@@ -248,6 +248,9 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 				case ".r":
 					Roll(msg);
 					break;
+				case ".s":
+					Search(QQid, msg);
+					break;
 				case ".rc":
 					rc = new RandomCreator(msgstr[1], this);
 					rc.Build();
@@ -265,6 +268,63 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 			else
 			{
 				Send(String.Format("{0}", Tools.Dice(rollstr)));
+			}
+		}
+
+		Dictionary<long, List<FileInfo>> SearchMenu = new Dictionary<long, List<FileInfo>>();
+		public void Search(long QQid, string msg)
+		{
+			msg = msg.Replace(".s", "");
+			string[] msgs = msg.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+			DirectoryInfo d = new DirectoryInfo(CQ.GetCSPluginsFolder() + "\\Data");
+			if (!SearchMenu.ContainsKey(QQid) || !Regex.IsMatch(msgs[0], "[0-9]+") || int.Parse(msgs[0]) > SearchMenu[QQid].Count)
+			{
+				SearchMenu.Remove(QQid);
+				List<FileInfo> NewMenu = new List<FileInfo>();
+				SearchMenu.Add(QQid, new List<FileInfo>(d.GetFiles("*.jpg", SearchOption.AllDirectories))); //"*" + msgs[0] +
+
+				foreach (FileInfo fi in SearchMenu[QQid])
+				{
+					foreach (string str in msgs)
+					{
+						if (!fi.Name.Contains(str) && !fi.Name.ToLower().Contains(str))
+						{
+							goto bk;
+						}
+					}
+					NewMenu.Add(fi);
+					bk: continue;
+				}
+
+				if (NewMenu.Count == 1)
+				{
+					File.Copy(NewMenu[0].FullName, CQ.GetCQAppFolder() + "\\data\\image\\" + NewMenu[0].Name, true);
+					Send(CQ.CQCode_Image(NewMenu[0].Name));
+					SearchMenu.Remove(QQid);
+				}
+				else
+				{
+					string rtmsg = string.Format("[{0}]查找到了{1}项:", CQ.CQCode_At(QQid), NewMenu.Count);
+					if (NewMenu.Count > 10)
+					{
+						rtmsg += "\n匹配项目过多，仅显示前10项，建议更换或添加关键字";
+						NewMenu.RemoveRange(10, NewMenu.Count - 10);
+					}
+					SearchMenu[QQid] = NewMenu;
+					foreach (FileInfo fi in NewMenu)
+					{
+						rtmsg += "\n" + (NewMenu.IndexOf(fi) + 1).ToString() + "." + fi.Name.Replace(fi.Extension, "");
+					}
+					rtmsg += "\n请输入.s+序号";
+					Send(rtmsg);
+				}
+			}
+			else
+			{
+				FileInfo sel = SearchMenu[QQid][int.Parse(msgs[0]) - 1];
+				File.Copy(sel.FullName, CQ.GetCQAppFolder() + "\\data\\image\\" + sel.Name, true);
+				Send(CQ.CQCode_Image(sel.Name.Replace(",", "&#44;")));
+				SearchMenu.Remove(QQid);
 			}
 		}
 	}
@@ -655,6 +715,7 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 			response.Close();
 			return img;
 		}
+
 		Dictionary<long, List<FileInfo>> SearchMenu = new Dictionary<long, List<FileInfo>>();
 		public void Search(long QQid, string msg)
 		{
@@ -665,13 +726,13 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 			{
 				SearchMenu.Remove(QQid);
 				List<FileInfo> NewMenu = new List<FileInfo>();
-				SearchMenu.Add(QQid, new List<FileInfo>(d.GetFiles("*" + msgs[0] + "*.jpg",SearchOption.AllDirectories)));
+				SearchMenu.Add(QQid, new List<FileInfo>(d.GetFiles("*.jpg",SearchOption.AllDirectories)));
 				
 				foreach (FileInfo fi in SearchMenu[QQid])
 				{
 					foreach (string str in msgs)
 					{
-						if (!fi.Name.Contains(str))
+						if (!fi.Name.Contains(str) && !fi.Name.ToLower().Contains(str))
 						{
 							goto bk;
 						}
