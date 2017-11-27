@@ -224,6 +224,7 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 		long QQid;
 		RandomCreator rc;
 		public bool rcInput = false;
+		Random rd = new Random();
 
 		public PrivateSession(long id)
 		{
@@ -274,7 +275,7 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 		Dictionary<long, List<FileInfo>> SearchMenu = new Dictionary<long, List<FileInfo>>();
 		public void Search(long QQid, string msg)
 		{
-			msg = msg.Replace(".s", "");
+			msg = msg.Replace(".s", "").Replace("。s", "");
 			string[] msgs = msg.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
 			DirectoryInfo d = new DirectoryInfo(CQ.GetCSPluginsFolder() + "\\Data");
 			if (!SearchMenu.ContainsKey(QQid) || !Regex.IsMatch(msgs[0], "[0-9]+") || int.Parse(msgs[0]) > SearchMenu[QQid].Count)
@@ -307,8 +308,12 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 					string rtmsg = string.Format("[{0}]查找到了{1}项:", CQ.CQCode_At(QQid), NewMenu.Count);
 					if (NewMenu.Count > 10)
 					{
-						rtmsg += "\n匹配项目过多，仅显示前10项，建议更换或添加关键字";
-						NewMenu.RemoveRange(10, NewMenu.Count - 10);
+						rtmsg += "\n匹配项目过多，仅显示随机10项，建议更换或添加关键字";
+						while (NewMenu.Count > 10)
+						{
+							NewMenu.RemoveAt(rd.Next(0, NewMenu.Count));
+						}
+						//NewMenu.RemoveRange(10, NewMenu.Count - 10);
 					}
 					SearchMenu[QQid] = NewMenu;
 					foreach (FileInfo fi in NewMenu)
@@ -514,9 +519,6 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 				DirectoryInfo d = new DirectoryInfo(CQ.GetCSPluginsFolder() + "\\CharSettings");
 				Logging = true;
 				LogFile = msg;
-				LogStream = new FileStream(CQ.GetCSPluginsFolder() + "\\LogFiles\\" + LogFile + "-" + GroupID + ".txt"
-					, FileMode.Append, FileAccess.Write);
-				LogWriter = new StreamWriter(LogStream);
 
 				ep = new ExcelPackage();
 				LogTable = ep.Workbook.Worksheets.Add(LogFile);
@@ -545,8 +547,6 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 			else
 			{
 				Send("=======记录结束=======");
-				LogWriter.Close();
-				LogStream.Close();
 
 				ep.SaveAs(new FileInfo(CQ.GetCSPluginsFolder() + "\\LogFiles\\" + LogFile + "-" + GroupID + ".xlsx"));
 				LogFile = "";
@@ -576,7 +576,7 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 			{
 				msg = msg.Replace(m.ToString(), "@" + CQE.GetQQName(long.Parse(m.ToString().Replace("[CQ:at,qq=", "").Replace("]", ""))));
 			}
-			NewRecord(QQid, msg);
+			NewRecord(QQid, msg.Replace("&#91;", "[").Replace("&#93;", "]"));
 			/*msg = msg.Replace("\n", ";;");
 			if (DateTime.Now.Minute != lastTimeStamp.Minute && DateTime.Now.Minute % 10 == 0)
 			{
@@ -617,6 +617,7 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 						? IniFileHelper.GetStringValue(CharBinding[QQid], "CharInfo", "CharName", QQid == 0 ? "=======" : CQE.GetQQName(QQid)) 
 						: CQE.GetQQName(QQid);
 			LogTable.Cells[RecConter, 3].Value = msg;
+			LogTable.Cells[RecConter, 4].Value = DateTime.Now.ToLongTimeString();
 			if (msg.StartsWith("\"") || msg.StartsWith("“") || msg.StartsWith("”")) LogTable.Cells[RecConter, 3].Style.Font.Bold = true;
 			SetColor(QQid);
 			if(msg.StartsWith("(")||msg.StartsWith("（")) LogTable.Cells[RecConter, 3].Style.Font.Color.SetColor(Color.Gray);
@@ -719,7 +720,7 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 		Dictionary<long, List<FileInfo>> SearchMenu = new Dictionary<long, List<FileInfo>>();
 		public void Search(long QQid, string msg)
 		{
-			msg = msg.Replace(".s", "");
+			msg = msg.Replace(".s", "").Replace("。s", "");
 			string[] msgs = msg.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
 			DirectoryInfo d = new DirectoryInfo(CQ.GetCSPluginsFolder() + "\\Data");
 			if (!SearchMenu.ContainsKey(QQid) || !Regex.IsMatch(msgs[0], "[0-9]+") || int.Parse(msgs[0]) > SearchMenu[QQid].Count) 
@@ -752,8 +753,12 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 					string rtmsg = string.Format("[{0}]查找到了{1}项:", CQ.CQCode_At(QQid), NewMenu.Count);
 					if (NewMenu.Count > 10)
 					{
-						rtmsg += "\n匹配项目过多，仅显示前10项，建议更换或添加关键字";
-						NewMenu.RemoveRange(10, NewMenu.Count - 10);
+						rtmsg += "\n匹配项目过多，仅显示随机10项，建议更换或添加关键字";
+						while (NewMenu.Count > 10)
+						{
+							NewMenu.RemoveAt(rd.Next(0, NewMenu.Count));
+						}
+						//NewMenu.RemoveRange(10, NewMenu.Count - 10);
 					}
 					SearchMenu[QQid] = NewMenu;
 					foreach (FileInfo fi in NewMenu)
@@ -1045,6 +1050,16 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 				File.Replace(CQ.GetCSPluginsFolder() + "\\CharSettings\\tmp.ini", CharBinding[QQid], CQ.GetCSPluginsFolder() + "\\CharSettings\\LastChange.bak");
 				Send(string.Format("[{0}]{1}已修改为{2}", CQ.CQCode_At(QQid), key, value));
 			}
+		}
+
+		public void Counter(long QQid, string msg)
+		{
+
+		}
+
+		public void CounterSet(long QQid, string key, string value)
+		{
+
 		}
 
 		public void SideMemory(long QQid, string msg)
@@ -1623,6 +1638,51 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 			return sum;
 			
 		}
+
+		public static string NameGenerator()
+		{
+			string name = string.Empty;
+			string[] currentconsonant;
+			string[] vowels = "a,a,a,a,a,e,e,e,e,e,e,e,e,e,e,e,i,i,i,o,o,o,u,y,ee,ee,ea,ea,ey,eau,eigh,oa,oo,ou,ough,ay".Split(',');
+			string[] commonconsonants = "s,s,s,s,t,t,t,t,t,n,n,r,l,d,sm,sl,sh,sh,th,th,th".Split(',');
+			string[] averageconsonants = "sh,sh,st,st,b,c,f,g,h,k,l,m,p,p,ph,wh".Split(',');
+			string[] middleconsonants = "x,ss,ss,ch,ch,ck,ck,dd,kn,rt,gh,mm,nd,nd,nn,pp,ps,tt,ff,rr,rk,mp,ll".Split(','); //can't start
+			string[] rareconsonants = "j,j,j,v,v,w,w,w,z,qu,qu".Split(',');
+			Random rng = new Random(Guid.NewGuid().GetHashCode()); //http://codebetter.com/blogs/59496.aspx
+			int[] lengtharray = new int[] { 2, 2, 2, 2, 2, 2, 3, 3, 3, 4 }; //favor shorter names but allow longer ones
+			int Length = lengtharray[rng.Next(lengtharray.Length)];
+			for (int i = 0; i < Length; i++)
+			{
+				int lettertype = rng.Next(1000);
+				if (lettertype < 775) currentconsonant = commonconsonants;
+				else if (lettertype < 875 && i > 0) currentconsonant = middleconsonants;
+				else if (lettertype < 985) currentconsonant = averageconsonants;
+				else currentconsonant = rareconsonants;
+				name += currentconsonant[rng.Next(currentconsonant.Length)];
+				name += vowels[rng.Next(vowels.Length)];
+				if (name.Length > 4 && rng.Next(1000) < 800) break; //getting long, must roll to save
+				if (name.Length > 6 && rng.Next(1000) < 950) break; //really long, roll again to save
+				if (name.Length > 7) break; //probably ridiculous, stop building and add ending
+			}
+			int endingtype = rng.Next(1000);
+			if (name.Length > 6)
+				endingtype -= (name.Length * 25); //don't add long endings if already long
+			else
+				endingtype += (name.Length * 10); //favor long endings if short
+			if (endingtype < 400) { } // ends with vowel
+			else if (endingtype < 775) name += commonconsonants[rng.Next(commonconsonants.Length)];
+			else if (endingtype < 825) name += averageconsonants[rng.Next(averageconsonants.Length)];
+			else if (endingtype < 840) name += "ski";
+			else if (endingtype < 860) name += "son";
+			else if (Regex.IsMatch(name, "(.+)(ay|e|ee|ea|oo)$") || name.Length < 5)
+			{
+				name = "Mc" + name.Substring(0, 1).ToUpper() + name.Substring(1);
+				return name;
+			}
+			else name += "ez";
+			name = name.Substring(0, 1).ToUpper() + name.Substring(1); //capitalize first letter
+			return name;
+		}
 	}
 
 	class RandomCreator
@@ -1694,6 +1754,11 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 					BuildStr = BuildStr.Replace(rp, d);
 					continue;
 				}
+				if (m == "RdName")
+				{
+					BuildStr = new Regex(Regex.Escape(rp)).Replace(BuildStr, Tools.NameGenerator(), 1);
+					continue;
+				}
 				if (!m.Contains("=="))
 				{
 					if (d.StartsWith("Input:"))
@@ -1701,8 +1766,16 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 						d = desc.Replace(d.Replace("Input:", ""), "");
 						if (d.Contains("=="))
 						{
-							Inputs.Add(d.Split(new string[] { "==" }, StringSplitOptions.RemoveEmptyEntries)[0]
-								, d.Split(new string[] { "==" }, StringSplitOptions.RemoveEmptyEntries)[1]);
+							if (!Inputs.ContainsKey(d.Split(new string[] { "==" }, StringSplitOptions.RemoveEmptyEntries)[0]))
+							{
+								Inputs.Add(d.Split(new string[] { "==" }, StringSplitOptions.RemoveEmptyEntries)[0]
+									, d.Split(new string[] { "==" }, StringSplitOptions.RemoveEmptyEntries)[1]);
+							}
+							else
+							{
+								Inputs[d.Split(new string[] { "==" }, StringSplitOptions.RemoveEmptyEntries)[0]]
+									= d.Split(new string[] { "==" }, StringSplitOptions.RemoveEmptyEntries)[1];
+							}
 							d = d.Split(new string[] { "==" }, StringSplitOptions.RemoveEmptyEntries)[0];
 						}
 						if (Inputs.ContainsKey(d))
@@ -1711,8 +1784,7 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 								Inputs[d], IniFileHelper.GetStringValue(MainFile, m, "Default", "")), 1);
 							//BuildStr = BuildStr.Replace(rp, IniFileHelper.GetStringValue(MainFile, m, Inputs[d], ""));
 						}
-
-						else
+						if(!Inputs.ContainsKey(d))
 						{
 							Input(rp);
 							return;
