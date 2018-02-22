@@ -23,8 +23,8 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 		Dictionary<long, GroupSession> SessionTable = new Dictionary<long, GroupSession>();
 		static Random rd = new Random();
 
-		static public string CSPath = "C:\\酷Q Pro\\CSharpPlugins";
-		static public string CQPath = "C:\\酷Q Pro";
+		static public string CSPath = CQ.GetCSPluginsFolder();
+		static public string CQPath = CQ.GetCSPluginsFolder().Replace("\\CSharpPlugins", "");
 
 		/// <summary>
 		/// 应用初始化，用来初始化应用的基本信息。
@@ -227,8 +227,8 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 
 	class PrivateSession
 	{
-		static public string CSPath = "C:\\酷Q Pro\\CSharpPlugins";
-		static public string CQPath = "C:\\酷Q Pro";
+		static public string CSPath = CQ.GetCSPluginsFolder();
+		static public string CQPath = CQ.GetCSPluginsFolder().Replace("\\CSharpPlugins", "");
 		static public Dictionary<long, PrivateSession> Sessions = new Dictionary<long, PrivateSession>();
 		public long QQid;
 
@@ -505,8 +505,9 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 
 		static public Dictionary<long, GroupSession> Sessions = new Dictionary<long, GroupSession>();
 
-		static public string CSPath = "C:\\酷Q Pro\\CSharpPlugins";
-		static public string CQPath = "C:\\酷Q Pro";
+		static public string CSPath = CQ.GetCSPluginsFolder();
+		static public string CQPath = CQ.GetCSPluginsFolder().Replace("\\CSharpPlugins", "");
+		static public string Pat = CQ.GetCSPluginsFolder();
 
 		Random rd = new Random();
 
@@ -840,6 +841,9 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 					break;
 				case ".time":
 					Send(time.ToString(), QQid);
+					break;
+				case ".path":
+					Send(Pat);
 					break;
 				case ".cmd":
 					if (CharBinding.ContainsKey(QQid))
@@ -3124,8 +3128,8 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 	{
 		static Random rd = new Random();
 		//static FullDiceRandom rd = new FullDiceRandom();
-		static string CSPath = "C:\\酷Q Pro\\CSharpPlugins";
-		static string CQPath = "C:\\酷Q Pro";
+		static string CSPath = CQ.GetCSPluginsFolder();
+		static string CQPath = CQ.GetCSPluginsFolder().Replace("\\CSharpPlugins", "");
 		static public Object SendDebugMessage(Object msg)
 		{
 			CQ.SendPrivateMessage(long.Parse(IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "GeneralSetting", "DebugID", "")), msg.ToString());
