@@ -13,7 +13,7 @@ using System.Linq;
 using System.Text;
 using System.Runtime.Serialization.Formatters.Binary;
 
-namespace Wennx.CQP.CSharpPlugins.TRPGBot
+namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 {
 	/// <summary>
 	/// 酷Q C#版插件Demo
@@ -23,8 +23,8 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 		Dictionary<long, GroupSession> SessionTable = new Dictionary<long, GroupSession>();
 		static Random rd = new Random();
 
-		static string CSPath = "C:\\酷Q Pro\\CSharpPlugins";
-		static string CQPath = "C:\\酷Q Pro";
+		static public string CSPath = "C:\\酷Q Pro\\CSharpPlugins";
+		static public string CQPath = "C:\\酷Q Pro";
 
 		/// <summary>
 		/// 应用初始化，用来初始化应用的基本信息。
@@ -34,10 +34,10 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 			// 此方法用来初始化插件名称、版本、作者、描述等信息，
 			// 不要在此添加其它初始化代码，插件初始化请写在Startup方法中。
 
-			this.Name = "TRPG Bot";
-			this.Version = new Version("0.0.2.5");
+			this.Name = "Dicecat the TRPG Bot";
+			this.Version = new Version("1.0.0.0");
 			this.Author = "Wennx";
-			this.Description = "TRPG综合Bot";
+			this.Description = "史诗逆天骰喵";
 		}
 
 		/// <summary>
@@ -138,6 +138,7 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 		{
 			// 处理群文件上传事件。
 			CQ.SendGroupMessage(fromGroup, String.Format("[{0}]{1}你上传了一个文件：{2}", CQ.ProxyType, CQ.CQCode_At(fromQQ), file));
+			Tools.SendDebugMessage(file);
 		}
 
 		/// <summary>
@@ -226,12 +227,17 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 
 	class PrivateSession
 	{
-		static string CSPath = "C:\\酷Q Pro\\CSharpPlugins";
-		static string CQPath = "C:\\酷Q Pro";
+		static public string CSPath = "C:\\酷Q Pro\\CSharpPlugins";
+		static public string CQPath = "C:\\酷Q Pro";
 		static public Dictionary<long, PrivateSession> Sessions = new Dictionary<long, PrivateSession>();
-		long QQid;
+		public long QQid;
+
 		RandomCreator rc;
-		public bool rcInput = false;
+		CharacterBuilder cb;
+		CharacterEditor ce;
+
+		public string InputHook = "";
+
 		Random rd = new Random();
 		Regex CQIMG = new Regex("\\[CQ:image,file=[\\S ]*?\\]");
 
@@ -261,6 +267,10 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 				case ".r":
 					Roll(msg);
 					break;
+				case ".end":
+					Send(InputHook + "已终止");
+					InputHook = "";
+					break;
 				case ".s":
 					Search(QQid, msg, MsgID);
 					break;
@@ -268,18 +278,43 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 					Draw(QQid, msg, MsgID);
 					break;
 				case ".rc":
+					if (InputHook != "") break;
 					rc = new RandomCreator(msgstr[1], this);
 					rc.Build();
 					break;
-				default:
-					if (CQIMG.IsMatch(msg))
+				case ".cb":
+					if (InputHook != "") break;
+					cb = new CharacterBuilder(this);
+					cb.Build();
+					break;
+				case ".ce":
+					if (InputHook != "") break;
+					ce = new CharacterEditor(this);
+					ce.Edit();
+					break;
+				case ".addmap":
+					if (InputHook == "")
 					{
-						AddMap(msg);
+						InputHook = "AM";
 					}
-					else if (rcInput)
+					break;
+				default:
+					switch (InputHook)
 					{
-						rc.Build(msg);
-						return;
+						case "AM":
+							if (CQIMG.IsMatch(msg)) AddMap(msg);
+							break;
+						case "RC":
+							rc.Build(msg);
+							break;
+						case "CB":
+							cb.Build(msg);
+							break;
+						case "CE":
+							ce.Edit(msg);
+							break;
+						default:
+							break;
 					}
 					break;
 			}
@@ -374,8 +409,7 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 			msg = msg.Replace(".s", "").Replace("。s", "");
 			string[] msgs = msg.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
 			DirectoryInfo d = new DirectoryInfo(CSPath + "\\Data");
-			int res = 0;
-			if (!SearchMenu.ContainsKey(QQid) || !Regex.IsMatch(msgs[0], "[0-9]+") || !int.TryParse(msgs[0], out res) || res < 1 || res > SearchMenu[QQid].Count)
+			if (!SearchMenu.ContainsKey(QQid) || !Regex.IsMatch(msgs[0], "[0-9]+") || !int.TryParse(msgs[0], out int res) || res < 1 || res > SearchMenu[QQid].Count)
 			{
 				SearchMenu.Remove(QQid);
 				List<FileInfo> NewMenu = new List<FileInfo>();
@@ -471,8 +505,8 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 
 		static public Dictionary<long, GroupSession> Sessions = new Dictionary<long, GroupSession>();
 
-		static string CSPath = "C:\\酷Q Pro\\CSharpPlugins";
-		static string CQPath = "C:\\酷Q Pro";
+		static public string CSPath = "C:\\酷Q Pro\\CSharpPlugins";
+		static public string CQPath = "C:\\酷Q Pro";
 
 		Random rd = new Random();
 
@@ -633,9 +667,16 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 					CharBinding.Add(long.Parse(kv.Substring(0, kv.IndexOf('='))), kv.Substring(kv.IndexOf('=') + 1));
 				}
 			}
+			time.Set(IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "G" + GroupID + "_Settings", "AdventureTime"
+				, "").Replace("年", "y").Replace("月", "m").Replace("日", "d").Replace("时", "h").Replace("分", "min"));
+			foreach (string q in IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "G" + GroupID + "_Settings", "Admins", "")
+				.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries)) 
+			{
+				if (!Admin.Contains(long.Parse(q))) Admin.Add(long.Parse(q));
+			}
 		}
 
-		public bool isAdmin(long QQid)
+		public bool IsAdmin(long QQid)
 		{
 			if (Admin.Contains(QQid)) return true;
 			if (IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "GeneralSetting", "SuperAdminID", "").Contains(QQid.ToString()))
@@ -704,7 +745,7 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 			else if (nya_mood < 15)
 			{
 				Send(nya_angry[rd.Next(0, 3)], QQid);
-				if (!isAdmin(QQid)) CQ.SetGroupMemberGag(GroupID, QQid, 15);
+				if (!IsAdmin(QQid)) CQ.SetGroupMemberGag(GroupID, QQid, 15);
 			}
 			else if (nya_mood < 35)
 			{
@@ -733,9 +774,10 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 		{
 			if (msg.StartsWith("喵")) Nya(QQid, msg, MsgID);
 			if (Logging && !subCmd) Log(msg, QQid);
-			if (isAdmin(QQid) && msg.StartsWith("+"))
+			if (IsAdmin(QQid) && msg.StartsWith("+"))
 			{
 				time += msg;
+				IniFileHelper.WriteValue(CSPath + "\\Config.ini", "G" + GroupID + "_Settings", "AdventureTime", time.ToString());
 				Send(time.ToString(), QQid);
 			}
 			string[] msgstr;
@@ -771,7 +813,7 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 			switch (msgstr[0].ToLower())
 			{
 				case ".reset":
-					if (QQid == Owner && msg.Contains(GroupID.ToString()))
+					if (IsAdmin(QQid) && msg.Contains(GroupID.ToString()))
 					{
 						Send("群会话已重置", QQid);
 						if (Logging)
@@ -782,15 +824,19 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 
 					}
 					break;
-				case ".gn":
-					Send(GetName(QQid), QQid);
+				case ".e":
+					Send(msg.Replace(".e", ""), QQid);
 					break;
 				case ".settime":
-					if (isAdmin(QQid) && msgstr.Length > 1)
+					if (IsAdmin(QQid) && msgstr.Length > 1)
 					{
 						time.Set(msgstr[1]);
+						IniFileHelper.WriteValue(CSPath + "\\Config.ini", "G" + GroupID + "_Settings", "AdventureTime", time.ToString());
 						Send(time.ToString(), QQid);
 					}
+					break;
+				case ".t":
+					Send(time.ToString(), QQid);
 					break;
 				case ".time":
 					Send(time.ToString(), QQid);
@@ -813,6 +859,9 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 					Roll(QQid, msg, MsgID);
 					nya_mood += 5;
 					break;
+				case ".rd":
+					Roll(QQid, ".r " + IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "GeneralSetting", "DefaultDice", "d20"), MsgID);
+					break;
 				case ".save":
 					SaveSession(QQid);
 					break;
@@ -826,6 +875,9 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 				case ".rs":
 
 					Roll(QQid, msg, MsgID);
+					break;
+				case ".cnew":
+					CharNew(QQid, msg);
 					break;
 				case ".csel":
 					if (msgstr.Length == 1)
@@ -895,7 +947,7 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 					if (msgstr.Length > 1) GHIs(QQid, msgstr[1], MsgID);
 					break;
 				case ".map":
-					if (msgstr.Length > 1 && isAdmin(QQid)) InitMap(QQid, msg, MsgID);
+					if (msgstr.Length > 1 && IsAdmin(QQid)) InitMap(QQid, msg, MsgID);
 					else ShowMap(QQid, msg, MsgID);
 					break;
 				case ".view":
@@ -923,7 +975,7 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 					}
 					else
 					{
-						LoggerToggle(QQid, DateTime.Now.ToString(), MsgID);
+						LoggerToggle(QQid, "", MsgID);
 					}
 					break;
 			}
@@ -939,21 +991,29 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 
 		Dictionary<long, Image> face = new Dictionary<long, Image>();
 		Dictionary<long, Color> color = new Dictionary<long, Color>();
+		Dictionary<Color, long> colorArrangement = new Dictionary<Color, long>();
 		List<Color> unusedColor
 			= new List<Color>() { Color.Blue,Color.Brown,Color.CadetBlue,Color.DarkOrange,Color.DarkViolet,
 			Color.ForestGreen,Color.Fuchsia,Color.Goldenrod,Color.Red};
 		List<Color> predefColor
 					= new List<Color>() { Color.Blue,Color.Brown,Color.CadetBlue,Color.DarkOrange,Color.DarkViolet,
 			Color.ForestGreen,Color.Fuchsia,Color.Goldenrod,Color.Red};
+		
 
 		public void LoggerToggle(long QQid, string msg, int msgID)
 		{
-			if (!isAdmin(QQid)) return;
+			if (!IsAdmin(QQid)) return;
 			if (Logging == false)
 			{
-				DirectoryInfo d = new DirectoryInfo(CSPath + "\\CharSettings");
 				Logging = true;
 				LogFile = msg;
+				if (LogFile == "")
+				{
+					int i = 1;
+					while (File.Exists(CSPath + "\\LogFiles\\UnnamedLog" + i + "-" + GroupID + ".xlsx")) i++;
+					LogFile = "UnnamedLog" + i;
+				}
+				
 
 				ep = new ExcelPackage();
 				LogTable = ep.Workbook.Worksheets.Add(LogFile);
@@ -973,7 +1033,7 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 					color.Add(long.Parse(IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "GeneralSetting", "DebugID", "")), Color.DeepSkyBlue);
 
 
-				Send(string.Format("=======群日志 {0}=======", msg), QQid);
+				Send(string.Format("=======群日志 {0}=======", LogFile), QQid);
 				Send(string.Format("=======群号：{0}=======", GroupID), QQid);
 				Send(string.Format("=======发起者：{0}=======", QQid), QQid);
 				Send(string.Format("======={0}开始记录=======", DateTime.Now), QQid);
@@ -1039,7 +1099,6 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 			if (msg.StartsWith("(") || msg.StartsWith("（"))
 			{
 				msg = CQIMG.Replace(msg, "");
-				LogTable.Cells[RecConter, 3].Style.Font.Color.SetColor(Color.Gray);
 			}
 			foreach (Match m in CQIMG.Matches(msg))
 			{
@@ -1053,7 +1112,7 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 						: GetName(QQid);
 			LogTable.Cells[RecConter, 3].Value = msg;
 			LogTable.Cells[RecConter, 4].Value = DateTime.Now.ToLongTimeString();
-			if (msg.StartsWith("\"") || msg.StartsWith("“") || msg.StartsWith("”") || msg.Contains(":\"") || msg.Contains("：“") || msg.Contains("：”"))
+			if (msg.Contains("\"") || msg.Contains("“") || msg.Contains("”"))
 				LogTable.Cells[RecConter, 3].Style.Font.Bold = true;
 			SetColor(QQid);
 			if (msg.StartsWith("(") || msg.StartsWith("（")) LogTable.Cells[RecConter, 3].Style.Font.Color.SetColor(Color.Gray);
@@ -1150,7 +1209,7 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 
 		public void SetColor(long QQid)
 		{
-			if (!CharBinding.ContainsKey(QQid) && !color.ContainsKey(QQid)) color.Add(QQid, Color.Gray);
+			/*if (!CharBinding.ContainsKey(QQid) && !color.ContainsKey(QQid)) color.Add(QQid, Color.Gray);
 			else if (!color.ContainsKey(QQid))
 			{
 				color.Add(QQid
@@ -1164,13 +1223,63 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 			{
 				color[QQid] = unusedColor[rd.Next(0, unusedColor.Count)];
 				unusedColor.Remove(color[QQid]);
-			}
+			}*/
+
+			if (!color.ContainsKey(QQid)) ArrangeColor(QQid);
 			LogTable.Cells[RecConter, 2].Style.Font.Color.SetColor(color[QQid]);
 			LogTable.Cells[RecConter, 3].Style.Font.Color.SetColor(color[QQid]);
 
 		}
 
+		public void ArrangeColor(long QQid)
+		{
+			if (color.ContainsKey(QQid))
+			{
+				Color rmv = Color.White;
+				if (colorArrangement.ContainsValue(QQid))
+				{
+					rmv = color[QQid];
+					colorArrangement.Remove(color[QQid]);
+				}
+				color.Remove(QQid);
+				if (predefColor.Contains(rmv) && !unusedColor.Contains(rmv)) 
+				{
+					unusedColor.Add(rmv);
+				}
+				if (color.ContainsValue(rmv))
+				{
+					foreach (KeyValuePair<long, Color> kv in color)
+					{
+						if (kv.Value == rmv)
+						{
+							colorArrangement.Add(kv.Value, kv.Key);
+							break;
+						}
+					}
+				}
+			}
+			if (!CharBinding.ContainsKey(QQid))
+			{
+				color.Add(QQid, Color.Gray);
+				return;
+			}
+			color.Add(QQid, Color.FromName(IniFileHelper.GetStringValue(CharBinding[QQid], "CharInfo", "Color", "White")));
+			if (color[QQid] != Color.White) 
+			{
+				if (!colorArrangement.ContainsKey(color[QQid])) colorArrangement.Add(color[QQid], QQid);
+			}
+			if (color[QQid] == Color.White) 
+			{
+				while (color[QQid] == Color.White || colorArrangement.ContainsKey(color[QQid]))
+				{
+					color[QQid] = unusedColor[rd.Next(0, unusedColor.Count)];
+				}
 
+				unusedColor.Remove(color[QQid]);
+				colorArrangement.Add(color[QQid], QQid);
+
+			}
+		}
 
 
 
@@ -1204,7 +1313,7 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 
 		public void InitMap(long QQid, string msg, int msgID)
 		{
-			if (!isAdmin(QQid)) return;
+			if (!IsAdmin(QQid)) return;
 			CQ.DeleteMsg(msgID);
 			if (mapping)
 			{
@@ -1306,7 +1415,7 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 			string ms;
 			CQ.DeleteMsg(msgID);
 			msg = msg.Replace(".add", "").Replace("。add", "");
-			if (!isAdmin(QQid) || !monster.IsMatch(msg) || !mapping) return;
+			if (!IsAdmin(QQid) || !monster.IsMatch(msg) || !mapping) return;
 			ms = monster.Match(msg).ToString();
 			if (!File.Exists(CSPath + "\\MonsterIcons\\" + ms + ".jpg"))
 			{
@@ -1469,7 +1578,7 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 			{
 				return;
 			}
-			if (!isAdmin(QQid)) return;
+			if (!IsAdmin(QQid)) return;
 			if (!Regex.IsMatch(msg, "(?<x1>[A-Z]+)(?<y1>[0-9]+)-(?<x2>[A-Z]+)(?<y2>[0-9]+)") && !msg.Contains("all")) return;
 			CQ.DeleteMsg(msgID);
 			if (msg.Contains("all"))
@@ -1534,7 +1643,7 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 				drs = Icons.Select("id = '" + id.Match(msg).ToString() + "'");
 				if (drs.Length == 1)
 				{
-					if ((string)drs[0]["owner"] == QQid.ToString() || isAdmin(QQid))
+					if ((string)drs[0]["owner"] == QQid.ToString() || IsAdmin(QQid))
 					{
 						IconCounter[new Point((int)drs[0]["X"], (int)drs[0]["Y"])]--;
 						if (IconCounter.ContainsKey(new Point(x, y))) IconCounter[new Point(x, y)]++;
@@ -1627,13 +1736,12 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 			msg = msg.Replace(".s", "").Replace("。s", "");
 			string[] msgs = msg.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
 			DirectoryInfo d = new DirectoryInfo(CSPath + "\\Data");
-			int res = 0;
 			if (lastSearchMenu.ContainsKey(QQid))
 			{
 				CQ.DeleteMsg(lastSearchMenu[QQid]);
 				lastSearchMenu.Remove(QQid);
 			}
-			if (!SearchMenu.ContainsKey(QQid) || !Regex.IsMatch(msgs[0], "[0-9]+") || !int.TryParse(msgs[0],out res) || res < 1 || res > SearchMenu[QQid].Count) 
+			if (!SearchMenu.ContainsKey(QQid) || !Regex.IsMatch(msgs[0], "[0-9]+") || !int.TryParse(msgs[0],out int res) || res < 1 || res > SearchMenu[QQid].Count) 
 			{
 				SearchMenu.Remove(QQid);
 				
@@ -1703,11 +1811,51 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 			}
 		}
 
+		public void CharNew(long QQid, string msg)
+		{
+			string template = "";
+			foreach (FileInfo fi in new DirectoryInfo(CSPath + "\\CharSettings\\Templates").GetFiles())
+			{
+				if (msg.Contains(fi.Name.Replace(fi.Extension, "")))
+				{
+					template = fi.FullName;
+					msg = msg.Replace(fi.Name.Replace(fi.Extension, ""), "");
+					break;
+				}
+			}
+			string[] msgstrs = msg.Split(' ');
+			if (msgstrs.Length < 2) return;
+			string name = msgstrs[1];
+			string file;
+			string id = "T" + rd.Next(0, 999).ToString("000");
+			DirectoryInfo d = new DirectoryInfo(CSPath + "\\CharSettings\\TempChar");
+			while (d.GetFiles(id + "-*.ini").Length > 0) id = "T" + rd.Next(0, 999).ToString("000");
+			foreach (char c in Path.GetInvalidFileNameChars())
+			{
+				name = name.Replace(c, '_');
+			}
+			file = CSPath + "\\CharSettings\\TempChar\\" + id + "-" + name + ".ini";
+			if (template == "")
+			{
+				File.Create(file).Close();
+			}
+			else
+			{
+				File.Copy(template, file);
+			}
+			
+			IniFileHelper.WriteValue(file, "CharInfo", "CharID", id);
+			IniFileHelper.WriteValue(file, "CharInfo", "PlayerID", QQid.ToString());
+			IniFileHelper.WriteValue(file, "CharInfo", "CharName", name);
+			if (msgstrs.Length > 2) IniFileHelper.WriteValue(file, "CharInfo", "CharDesc", msg.Replace(msgstrs[0] + " " + msgstrs[1] + " ", ""));
+			CharBind(QQid, ".csel " + id, 0);
+		}
+
 		public void CharSelection(long QQid)
 		{
 			Dictionary<string, string> menu = new Dictionary<string, string>();
 			DirectoryInfo d = new DirectoryInfo(CSPath + "\\CharSettings");
-			foreach (FileInfo f in d.GetFiles("*.ini"))
+			foreach (FileInfo f in d.GetFiles("*.ini", SearchOption.AllDirectories)) 
 			{
 
 				if (IniFileHelper.GetStringValue(f.FullName, "CharInfo", "PlayerID", "") == QQid.ToString())
@@ -1731,12 +1879,12 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 		{
 			string selection = msg.Replace(".csel ", "").Replace("。csel ", "");
 			DirectoryInfo d = new DirectoryInfo(CSPath + "\\CharSettings");
-			if (CQAT.IsMatch(selection) && isAdmin(QQid))
+			if (CQAT.IsMatch(selection) && IsAdmin(QQid))
 			{
 				QQid = long.Parse(CQAT.Match(selection).ToString().Replace("[CQ:at,qq=", "").Replace("]", ""));
 				selection = CQAT.Replace(selection, "");
 			}
-			foreach (FileInfo f in d.GetFiles("*.ini"))
+			foreach (FileInfo f in d.GetFiles("*.ini", SearchOption.AllDirectories))
 			{
 				if (IniFileHelper.GetStringValue(f.FullName, "CharInfo", "CharID", "") == selection)
 				{
@@ -1747,25 +1895,10 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 						CharBinding.Add(QQid, f.FullName);
 				}
 			}
-			string col;
 			string ico;
 			if (Logging)
 			{
-				col = IniFileHelper.GetStringValue(CharBinding[QQid], "CharInfo", "Color", "");
-				if (predefColor.Contains(color[QQid]) && !unusedColor.Contains(color[QQid]))
-				{
-					unusedColor.Add(color[QQid]);
-				}
-				if (col != "")
-				{
-					
-					color[QQid] = Color.FromName(col);
-				}
-				else
-				{
-					color[QQid] = unusedColor[rd.Next(0, unusedColor.Count)];
-					unusedColor.Remove(color[QQid]);
-				}
+				ArrangeColor(QQid);
 				ico = IniFileHelper.GetStringValue(CharBinding[QQid], "CharInfo", "Icon", "");
 				if (ico != "")
 				{
@@ -1796,6 +1929,9 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 		public void CharDisbinding(long QQid)
 		{
 			CharBinding.Remove(QQid);
+			ArrangeColor(QQid);
+			face.Remove(QQid);
+			IniFileHelper.DeleteKey(CSPath + "\\Config.ini", "G" + GroupID + "_CharBinding", QQid.ToString());
 			Send(string.Format("{0} 解除绑定了当前角色", CQ.CQCode_At(QQid)), QQid);
 		}
 
@@ -1890,40 +2026,47 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 			string orirsn = rollstr.Replace(".r ", "");
 			if (CharBinding.ContainsKey(QQid))
 			{
-
-				foreach (string str in IniFileHelper.GetAllItems(CharBinding[QQid], "CharMarco"))
-				{
-					rollstr = rollstr.Replace(str.Split('=')[0], str.Split('=')[1]);
-				}
-				string[] rps, kv;
+				string reps = IniFileHelper.GetStringValue(CharBinding[QQid], "MarcoReplace", "DefaultReplace", "");
 				foreach (string str in IniFileHelper.GetAllItems(CharBinding[QQid], "MarcoReplace"))
 				{
-					if (orirsn.Contains(str.Split('=')[0]) && str.Split('=')[0] != "DefaultReplace" 
-						&& str.Split('=').Length > 1)  
+					string[] strs = str.Split('=');
+					if (orirsn.Contains(strs[0]) && strs[0] != "DefaultReplace" && strs.Length > 1) 
 					{
-						rps = str.Split('=')[1].Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
-						foreach (string rp in rps)
+						reps += ";" + strs[1];
+						rollstr = rollstr.Replace(strs[0], "");
+					}
+				}
+				Regex rpre = new Regex("[^+\\-# ]+");
+				Regex recov = new Regex("@@@@");
+				MatchCollection replaces;
+				bool nonreplaced = false;
+				while (!nonreplaced)
+				{
+					nonreplaced = true;
+					replaces = rpre.Matches(rollstr);
+					rollstr = rpre.Replace(rollstr, "@@@@");
+					foreach (Match m in replaces)
+					{
+						if (IniFileHelper.GetStringValue(CharBinding[QQid], "CharMarco", m.ToString(), "") != "")
 						{
-							kv = rp.Split(new string[] { "->" }, StringSplitOptions.RemoveEmptyEntries);
-							if (kv.Length > 1)
-							{
-								rollstr = rollstr.Replace(kv[0], kv[1]);
-							}
+							rollstr = recov.Replace(rollstr,
+								IniFileHelper.GetStringValue(CharBinding[QQid], "CharMarco", m.ToString(), ""), 1);
+							nonreplaced = false;
+						}
+						else
+						{
+							rollstr = recov.Replace(rollstr, m.ToString(), 1);
 						}
 					}
 				}
-				if (IniFileHelper.GetStringValue(CharBinding[QQid], "MarcoReplace", "DefaultReplace", "")
-					.Split('=').Length > 1)
+				string[] kv;
+				string[] rps = reps.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+				foreach (string rp in rps)
 				{
-					rps = IniFileHelper.GetStringValue(CharBinding[QQid], "MarcoReplace", "DefaultReplace", "")
-					.Split('=')[1].Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
-					foreach (string rp in rps)
+					kv = rp.Split(new string[] { "->" }, StringSplitOptions.RemoveEmptyEntries);
+					if (kv.Length > 1)
 					{
-						kv = rp.Split(new string[] { "->" }, StringSplitOptions.RemoveEmptyEntries);
-						if (kv.Length > 1)
-						{
-							rollstr = rollstr.Replace(kv[0], kv[1]);
-						}
+						rollstr = rollstr.Replace(kv[0], kv[1]);
 					}
 				}
 			}
@@ -1957,29 +2100,41 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 			string orirsn = rollstr.Replace(".rs ", "");
 			if (CharBinding.ContainsKey(QQid))
 			{
-
-				foreach (string str in IniFileHelper.GetAllItems(CharBinding[QQid], "SideMarco"))
-				{
-					rollstr = rollstr.Replace(str.Split('=')[0], str.Split('=')[1]);
-				}
-				string[] rps, kv;
+				string reps = IniFileHelper.GetStringValue(CharBinding[QQid], "MarcoReplace", "DefaultReplace", "");
 				foreach (string str in IniFileHelper.GetAllItems(CharBinding[QQid], "MarcoReplace"))
 				{
-					if (orirsn.Contains(str.Split('=')[0]))
+					string[] strs = str.Split('=');
+					if (orirsn.Contains(strs[0]) && strs[0] != "DefaultReplace" && strs.Length > 1)
 					{
-						rps = str.Split('=')[1].Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
-						foreach (string rp in rps)
+						reps += ";" + strs[1];
+						rollstr = rollstr.Replace(strs[0], "");
+					}
+				}
+				Regex rpre = new Regex("[^+\\-# ]+");
+				Regex recov = new Regex("@@@@");
+				MatchCollection replaces;
+				bool nonreplaced = false;
+				while (!nonreplaced)
+				{
+					nonreplaced = true;
+					replaces = rpre.Matches(rollstr);
+					rollstr = rpre.Replace(rollstr, "@@@@");
+					foreach (Match m in replaces)
+					{
+						if (IniFileHelper.GetStringValue(CharBinding[QQid], "CharMarco", m.ToString(), "") != "")
 						{
-							kv = rp.Split(new string[] { "->" }, StringSplitOptions.RemoveEmptyEntries);
-							if (kv.Length > 1)
-							{
-								rollstr = rollstr.Replace(kv[0], kv[1]);
-							}
+							rollstr = recov.Replace(rollstr,
+								IniFileHelper.GetStringValue(CharBinding[QQid], "CharMarco", m.ToString(), ""), 1);
+							nonreplaced = false;
+						}
+						else
+						{
+							rollstr = recov.Replace(rollstr, m.ToString(), 1);
 						}
 					}
 				}
-				rps = IniFileHelper.GetStringValue(CharBinding[QQid], "MarcoReplace", "DefaultReplace", "")
-					.Split('=')[1].Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+				string[] kv;
+				string[] rps = reps.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
 				foreach (string rp in rps)
 				{
 					kv = rp.Split(new string[] { "->" }, StringSplitOptions.RemoveEmptyEntries);
@@ -2143,7 +2298,14 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 			{
 				num = Tools.DiceNum("+" + itemnum.Match(str).ToString().Replace("x", ""));
 				name = itemnum.Replace(str, "").ToString();
-				items.Add(name, num == 0 ? 1 : num);
+				if (items.ContainsKey(name))
+				{
+					items[name] += num == 0 ? 1 : num;
+				}
+				else
+				{
+					items.Add(name, num == 0 ? 1 : num);
+				}
 			}
 			foreach (string str in opt)
 			{
@@ -2319,7 +2481,14 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 			{
 				num = Tools.DiceNum("+" + itemnum.Match(str).ToString().Replace("x", ""));
 				name = itemnum.Replace(str, "").ToString();
-				items.Add(name, num == 0 ? 1 : num);
+				if (items.ContainsKey(name))
+				{
+					items[name] += num == 0 ? 1 : num;
+				}
+				else
+				{
+					items.Add(name, num == 0 ? 1 : num);
+				}
 			}
 			foreach (string str in opt)
 			{
@@ -2371,7 +2540,7 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 
 		public void Rest(long QQid, string msg, int msgID)
 		{
-			if (!isAdmin(QQid)) return;
+			if (!IsAdmin(QQid)) return;
 			List<long> optqq = new List<long>();
 			string orikey;
 			string rtnstr = "经过休息……";
@@ -2437,6 +2606,7 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 
 							}
 						}
+
 					}
 					if (premsg == rtnstr) rtnstr += " 没有变化";
 				}
@@ -2446,19 +2616,25 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 
 		public void SetDM(long QQid, string msg, int msgID)
 		{
-			if (!isAdmin(QQid)) return;
+			if (!IsAdmin(QQid)) return;
 			long qq;
 			foreach (Match m in CQAT.Matches(msg))
 			{
 				qq = long.Parse(m.ToString().Replace("[CQ:at,qq=", "").Replace("]", ""));
-				if (isAdmin(qq) && Owner != qq)
+				if (IsAdmin(qq) && Owner != qq)
 				{
 					if (qq != long.Parse(IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "GeneralSetting", "DebugID", ""))) Admin.Remove(qq);
+					IniFileHelper.WriteValue(CSPath + "\\Config.ini", "G" + GroupID + "_Settings", "Admins"
+						, IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "G" + GroupID + "_Settings", "Admins", "")
+						.Replace(qq.ToString() + ";", ""));
 					Send(string.Format("{0}已被取消DM", GetName(qq)), QQid);
 				}
 				else
 				{
 					Admin.Add(qq);
+					IniFileHelper.WriteValue(CSPath + "\\Config.ini", "G" + GroupID + "_Settings", "Admins"
+						, IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "G" + GroupID + "_Settings", "Admins", "")
+						+ qq.ToString() + ";");
 					Send(string.Format("{0}已被设置为DM", GetName(qq)), QQid);
 				}
 				
@@ -2495,7 +2671,7 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 			if (msg.ToLower() == "go")
 			{
 				GHILastList = GHIGO();
-				if (isAdmin(QQid)) Send(GHILastList, QQid);
+				if (IsAdmin(QQid)) Send(GHILastList, QQid);
 				return;
 			}
 			else if (msg.ToLower() == "last")
@@ -2718,7 +2894,7 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 
 		public void AllRoll(long QQid, string key)
 		{
-			if (!isAdmin(QQid)) return;
+			if (!IsAdmin(QQid)) return;
 			string msg = "全体 " + key + " 检定结果为：";
 			string rollstr, dicestr, origin;
 			int result;
@@ -2731,9 +2907,38 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 			foreach (KeyValuePair<long, string> c in CharBinding)
 			{
 				rollstr = key;
-				foreach (string str in IniFileHelper.GetAllItems(c.Value, "CharMarco"))
+				string reps = IniFileHelper.GetStringValue(c.Value, "MarcoReplace", "DefaultReplace", "");
+				foreach (string str in IniFileHelper.GetAllItems(c.Value, "MarcoReplace"))
 				{
-					rollstr = rollstr.Replace(str.Split('=')[0], str.Split('=')[1]);
+					string[] strs = str.Split('=');
+					if (rollstr.Contains(strs[0]) && strs[0] != "DefaultReplace" && strs.Length > 1)
+					{
+						reps += ";" + strs[1];
+						rollstr = rollstr.Replace(strs[0], "");
+					}
+				}
+				Regex rpre = new Regex("[^+\\-# ]+");
+				Regex recov = new Regex("@@@@");
+				MatchCollection replaces;
+				bool nonreplaced = false;
+				while (!nonreplaced)
+				{
+					nonreplaced = true;
+					replaces = rpre.Matches(rollstr);
+					rollstr = rpre.Replace(rollstr, "@@@@");
+					foreach (Match mt in replaces)
+					{
+						if (IniFileHelper.GetStringValue(c.Value, "CharMarco", mt.ToString(), "") != "")
+						{
+							rollstr = recov.Replace(rollstr,
+								IniFileHelper.GetStringValue(c.Value, "CharMarco", mt.ToString(), ""), 1);
+							nonreplaced = false;
+						}
+						else
+						{
+							rollstr = recov.Replace(rollstr, mt.ToString(), 1);
+						}
+					}
 				}
 				substr = rollstr.Split(':');
 				if(substr.Length>1) AR.DefaultView.Sort = "Origin, Roll Desc";
@@ -2797,9 +3002,38 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 				if (CharBinding.ContainsKey(qq))
 				{
 					rollstr = key;
-					foreach (string str in IniFileHelper.GetAllItems(CharBinding[qq], "CharMarco"))
+					string reps = IniFileHelper.GetStringValue(CharBinding[qq], "MarcoReplace", "DefaultReplace", "");
+					foreach (string str in IniFileHelper.GetAllItems(CharBinding[qq], "MarcoReplace"))
 					{
-						rollstr = rollstr.Replace(str.Split('=')[0], str.Split('=')[1]);
+						string[] strs = str.Split('=');
+						if (rollstr.Contains(strs[0]) && strs[0] != "DefaultReplace" && strs.Length > 1)
+						{
+							reps += ";" + strs[1];
+							rollstr = rollstr.Replace(strs[0], "");
+						}
+					}
+					Regex rpre = new Regex("[^+\\-# ]+");
+					Regex recov = new Regex("@@@@");
+					MatchCollection replaces;
+					bool nonreplaced = false;
+					while (!nonreplaced)
+					{
+						nonreplaced = true;
+						replaces = rpre.Matches(rollstr);
+						rollstr = rpre.Replace(rollstr, "@@@@");
+						foreach (Match mt in replaces)
+						{
+							if (IniFileHelper.GetStringValue(CharBinding[qq], "CharMarco", mt.ToString(), "") != "")
+							{
+								rollstr = recov.Replace(rollstr,
+									IniFileHelper.GetStringValue(CharBinding[qq], "CharMarco", mt.ToString(), ""), 1);
+								nonreplaced = false;
+							}
+							else
+							{
+								rollstr = recov.Replace(rollstr, mt.ToString(), 1);
+							}
+						}
 					}
 					substr = rollstr.Split(':');
 					rtn += String.Format("\n[{0}]：",
@@ -2863,7 +3097,14 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 					Send("...(故意无视)");
 					break;
 				case 6:
-					Send(CQ.CQCode_At(long.Parse(IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "GeneralSetting", "DebugID", ""))) + "喵~喵！喵！喵？喵~");
+					if (File.Exists(CSPath + "\\Help.txt"))
+					{
+						Send(new StreamReader(File.Open(CSPath + "\\Help.txt", FileMode.Open)).ReadToEnd());
+					}
+					else
+					{
+						Send(CQ.CQCode_At(long.Parse(IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "GeneralSetting", "DebugID", ""))) + "喵~喵！喵！喵？喵~");
+					}
 					helpcount = 0;
 					break;
 			}
@@ -2871,9 +3112,18 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 		}
 	}
 
+	class FullDiceRandom
+	{
+		public int Next(int min,int max)
+		{
+			return 1;
+		}
+	}
+
 	class Tools
 	{
 		static Random rd = new Random();
+		//static FullDiceRandom rd = new FullDiceRandom();
 		static string CSPath = "C:\\酷Q Pro\\CSharpPlugins";
 		static string CQPath = "C:\\酷Q Pro";
 		static public Object SendDebugMessage(Object msg)
@@ -2938,6 +3188,30 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 		static public string Dice(string rollstr)
 		{
 			string str = "", rtstr = "";
+			Regex numbers = new Regex("( [0-9]+#|^[0-9]+#)");
+			if (numbers.IsMatch(rollstr))
+			{
+				string dicesm = numbers.Match(rollstr).ToString();
+				rollstr = rollstr.Replace(dicesm, "");
+				int dices;
+				if (dicesm.StartsWith(" "))
+				{
+					dices = int.Parse(dicesm.Substring(1, dicesm.Length - 2));
+				}
+				else
+				{
+					dices = int.Parse(dicesm.Substring(0, dicesm.Length - 1));
+				}
+				rtstr += "共计" + dices + "次:";
+				for (; dices > 0; dices--)
+				{
+					rtstr += DiceNum(rollstr) + ",";
+				}
+				if (rtstr.EndsWith(",")) rtstr = rtstr.Substring(0, rtstr.Length - 1);
+				return rtstr;
+			}
+
+			
 			string[] spl;
 			
 			Dictionary<int, int> roll = new Dictionary<int, int>();
@@ -3081,6 +3355,34 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 		static public string Dice(string rollstr, out int result)
 		{
 			string str = "", rtstr = "";
+
+			Regex numbers = new Regex("( [0-9]+#|^[0-9]+#)");
+			if (numbers.IsMatch(rollstr))
+			{
+				string dicesm = numbers.Match(rollstr).ToString();
+				rollstr = rollstr.Replace(dicesm, "");
+				int dices;
+				if (dicesm.StartsWith(" "))
+				{
+					dices = int.Parse(dicesm.Substring(1, dicesm.Length - 2));
+				}
+				else
+				{
+					dices = int.Parse(dicesm.Substring(0, dicesm.Length - 1));
+				}
+				rtstr += "共计" + dices + "次:";
+				int sigres;
+				result = 0;
+				for (; dices > 0; dices--)
+				{
+					sigres = DiceNum(rollstr);
+					result += sigres;
+					rtstr += sigres + ",";
+				}
+				if (rtstr.EndsWith(",")) rtstr = rtstr.Substring(0, rtstr.Length - 1);
+				return rtstr;
+			}
+
 			string[] spl;
 
 			Dictionary<int, int> roll = new Dictionary<int, int>();
@@ -3473,7 +3775,7 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 				sw.Close();
 				log.Close();
 				InputKey = "";
-				pSession.rcInput = false;
+				pSession.InputHook = "";
 			}
 
 			while (sp.IsMatch(BuildStr))
@@ -3613,7 +3915,7 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 				
 				
 			}
-
+			pSession.InputHook = "";
 			pSession.Send(BuildStr.Replace(";;", "\n").Replace("++", "+").Replace("+-", "-"));
 		}
 
@@ -3621,9 +3923,1063 @@ namespace Wennx.CQP.CSharpPlugins.TRPGBot
 		{
 			InputKey = key;
 			pSession.Send("请输入" + IniFileHelper.GetStringValue(MainFile, key.Substring(1, key.Length - 2), "Dice", "").Replace("Input:", "").Replace(";;", "\n") + "的值");
-			pSession.rcInput = true;
+			pSession.InputHook = "RC";
 		}
 
 	}
+
+	class CharacterBuilder
+	{
+		PrivateSession pSession;
+		string CharFile = "";
+		FileStream logfile;
+		StreamWriter log;
+		
+		Dictionary<string, List<string>> Texts = new Dictionary<string, List<string>>();
+
+		int step = 0;
+		string cmd = "";
+		string sec = "";
+		string key = "";
+		string prompt = "";
+
+		Regex locate = new Regex("(?<Sec>.+?)(:(?<Key>.+?))*::(?<Cmd>.+?)#(?<Prm>.+)");
+
+		Dictionary<string, string> menu = new Dictionary<string, string>();
+
+		public CharacterBuilder(PrivateSession ps)
+		{
+			pSession = ps;
+		}
+
+		public void Send(string msg)
+		{
+			if (step != 0) log.WriteLine(msg);
+			pSession.Send(msg.Replace("&", "&amp;").Replace("[", "&#91;").Replace("]", "&#93;"));
+		}
+
+		public void SendMenu(string prefix = "", string suffix = "")
+		{
+			int i = 1;
+			foreach (KeyValuePair<string,string> s in menu)
+			{
+				prefix += "\n" + s.Key + ". " + s.Value;
+				i++;
+			}
+			if (suffix != "") prefix += "\n" + suffix;
+			Send(prefix);
+		}
+
+		public void Build(string input = "")
+		{
+			input = input.Replace("&#91;", "[").Replace("&#93;", "]").Replace("&amp;", "&");
+			if (step == 0)
+			{
+				if (CharFile == "")
+				{
+					if (input == "")
+					{
+						ChooseChar();
+						return;
+					}
+					if (menu.ContainsKey(input))
+					{
+						LoadFile(input);
+						return;
+					}
+					else
+					{
+						Send("序号输入有误，请输入完整序号");
+					}
+				}
+				else
+				{
+					MoveFile(input);
+					step = 1;
+					input = "";
+				}
+			}
+			if (input != "") log.WriteLine(">>>>" + input);
+			while (IniFileHelper.GetStringValue(CharFile, "CharBuilder", step.ToString(), "") != "End") 
+			{
+				if (!Locate()) step++;
+				if (step > 100)
+				{
+					Send("人物建立失败，请联系DM手动建立人物");
+					pSession.InputHook = "";
+					return;
+				}
+				switch (cmd)
+				{
+					case "InNumRep":
+						InputNumberReplace(input);
+						return;
+					case "InNum":
+						InputNumber(input);
+						return;
+					case "InTextRep":
+						InputTextReplace(input);
+						return;
+					case "InText":
+						InputText(input);
+						return;
+					case "SelJump":
+						SelectJump(input);
+						return;
+					case "SelRep":
+						SelectReplace(input);
+						return;
+					case "Select":
+						Select(input);
+						return;
+					case "Jump":
+						Jump(input);
+						return;
+					case "Replace":
+						Replace();
+						return;
+					default:
+						step++;
+						return;
+				}
+			}
+			Send("角色建立完成");
+			log.Close();
+			logfile.Close();
+			DeleteBuildSec();
+			pSession.InputHook = "";
+
+		}
+
+		public void ChooseChar()
+		{
+			DirectoryInfo d = new DirectoryInfo(PrivateSession.CSPath + "\\CharSettings\\TempChar");
+			menu = new Dictionary<string, string>();
+			foreach (FileInfo f in d.GetFiles("*.ini"))
+			{
+
+				if (IniFileHelper.GetStringValue(f.FullName, "CharInfo", "PlayerID", "") == pSession.QQid.ToString())
+				{
+					menu.Add(IniFileHelper.GetStringValue(f.FullName, "CharInfo", "CharID", "0"), f.FullName);
+				}
+			}
+			string m = "你的临时角色：\n";
+			foreach (KeyValuePair<string, string> e in menu)
+			{
+				m += e.Key + ". " + IniFileHelper.GetStringValue(e.Value, "CharInfo", "CharName", "未知名称") 
+					+ "【" + IniFileHelper.GetStringValue(e.Value, "CharInfo", "GameVersion", "未知版本") + "】\n";
+			}
+			m += "输入序号选择需要建立的角色";
+			pSession.InputHook = "CB";
+			Send(m);
+		}
+
+		public void LoadFile(string selection)
+		{
+			CharFile = menu[selection];
+			Send("请输入DM提供的新人物编号");
+			pSession.InputHook = "CB";
+		}
+
+		public void MoveFile(string newID)
+		{
+			IniFileHelper.WriteValue(CharFile, "CharInfo", "CharID", newID);
+			File.Move(CharFile, CharFile.Replace("\\TempChar", ""));
+			CharFile = CharFile.Replace("\\TempChar", "");
+			logfile = new FileStream(CharFile.Replace(".ini", "-log.txt"), FileMode.Create);
+			log = new StreamWriter(logfile);
+		}
+
+		public bool Locate()
+		{
+			Match m = locate.Match(IniFileHelper.GetStringValue(CharFile, "CharBuilder", step.ToString(), ""));
+			if (!m.Success) return false;
+			sec = m.Groups["Sec"].Value;
+			key = m.Groups["Key"].Success ? m.Groups["Key"].Value : "";
+			cmd = m.Groups["Cmd"].Value;
+			prompt = m.Groups["Prm"].Success ? m.Groups["Prm"].Value : "";
+			return true;
+		}
+
+		public void InputNumberReplace(string input = "")
+		{
+			if (input == "")
+			{
+				Send(prompt);
+				pSession.InputHook = "CB";
+			}
+			else
+			{
+				if (!int.TryParse(input, out int num))
+				{
+					Send("输入的不是整数，请重新输入");
+					pSession.InputHook = "CB";
+					return;
+				}
+				string oldstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-Old", "");
+				string newstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-New", "").Replace("$Input", num.ToString());
+				string item;
+				if (key == "")
+				{
+					foreach (string k in IniFileHelper.GetAllItemKeys(CharFile, sec))
+					{
+						item = IniFileHelper.GetStringValue(CharFile, sec, k, "");
+						IniFileHelper.WriteValue(CharFile, sec, k, item.Replace(oldstr, newstr));
+					}
+				}
+				else
+				{
+					item = IniFileHelper.GetStringValue(CharFile, sec, key, "");
+					IniFileHelper.WriteValue(CharFile, sec, key, item.Replace(oldstr, newstr));
+				}
+				step++;
+				Build();
+			}
+		}
+		public void InputNumber(string input = "")
+		{
+			if (input == "")
+			{
+				Send(prompt);
+				pSession.InputHook = "CB";
+			}
+			else
+			{
+				if (!int.TryParse(input, out int num))
+				{
+					Send("输入的不是整数，请重新输入");
+					pSession.InputHook = "CB";
+					return;
+				}
+				if (key == "")
+				{
+					step++;
+					Build();
+					return;
+				}
+				IniFileHelper.WriteValue(CharFile, sec, key, num.ToString());
+				step++;
+				Build();
+			}
+		}
+		public void InputTextReplace(string input = "")
+		{
+			if (input == "")
+			{
+				Send(prompt);
+				pSession.InputHook = "CB";
+			}
+			else
+			{
+				string oldstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-Old", "");
+				string newstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-New", "").Replace("$Input", input);
+				string item;
+				if (key == "")
+				{
+					foreach (string k in IniFileHelper.GetAllItemKeys(CharFile, sec))
+					{
+						item = IniFileHelper.GetStringValue(CharFile, sec, k, "");
+						IniFileHelper.WriteValue(CharFile, sec, k, item.Replace(oldstr, newstr));
+					}
+				}
+				else
+				{
+					item = IniFileHelper.GetStringValue(CharFile, sec, key, "");
+					IniFileHelper.WriteValue(CharFile, sec, key, item.Replace(oldstr, newstr));
+				}
+				step++;
+				Build();
+			}
+		}
+		public void InputText(string input = "")
+		{
+			if (input == "")
+			{
+				Send(prompt);
+				pSession.InputHook = "CB";
+			}
+			else
+			{
+				if (key == "")
+				{
+					step++;
+					Build();
+					return;
+				}
+				IniFileHelper.WriteValue(CharFile, sec, key, input);
+				step++;
+				Build();
+			}
+		}
+
+		public void SelectJump(string input = "")
+		{
+			if (input == "")
+			{
+				int i = 1;
+				menu = new Dictionary<string, string>();
+				foreach (string c in IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-Choices", "").Split(';')) 
+				{
+					menu.Add(i.ToString(), c);
+					i++;
+				}
+				SendMenu(prompt, "请输入序号");
+			}
+			else
+			{
+				if (!menu.ContainsKey(input))
+				{
+					Send("序号输入有误，请重新输入");
+					return;
+				}
+
+				step = int.Parse(IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-To" + input, (step + 1).ToString()));
+				Build();
+			}
+			
+		}
+
+		public void SelectReplace(string input = "")
+		{
+			if (input == "")
+			{
+				int i = 1;
+				menu = new Dictionary<string, string>();
+				foreach (string c in IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-Choices", "").Split(';'))
+				{
+					menu.Add(i.ToString(), c);
+					i++;
+				}
+				SendMenu(prompt, "请输入序号");
+			}
+			else
+			{
+				if (!menu.ContainsKey(input))
+				{
+					Send("序号输入有误，请重新输入");
+					return;
+				}
+				string ip;
+				if (IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-Values", "") == "")
+				{
+					ip = menu[input];
+				}
+				else
+				{
+					ip = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-Values", "").Split(';')
+						[new List<string>(IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-Choices", "")
+						.Split(';')).IndexOf(menu[input])];
+				}
+				string oldstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-Old", "");
+				string newstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-New", "").Replace("$Input", ip);
+				string item;
+				if (key == "")
+				{
+					foreach (string k in IniFileHelper.GetAllItemKeys(CharFile, sec))
+					{
+						item = IniFileHelper.GetStringValue(CharFile, sec, k, "");
+						IniFileHelper.WriteValue(CharFile, sec, k, item.Replace(oldstr, newstr));
+					}
+				}
+				else
+				{
+					item = IniFileHelper.GetStringValue(CharFile, sec, key, "");
+					IniFileHelper.WriteValue(CharFile, sec, key, item.Replace(oldstr, newstr));
+				}
+				step++;
+				Build();
+			}
+		}
+
+		public void Select(string input = "")
+		{
+			if (input == "")
+			{
+				int i = 1;
+				menu = new Dictionary<string, string>();
+				foreach (string c in IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-Choices", "").Split(';'))
+				{
+					menu.Add(i.ToString(), c);
+					i++;
+				}
+				SendMenu(prompt, "请输入序号");
+			}
+			else
+			{
+				if (!menu.ContainsKey(input))
+				{
+					Send("序号输入有误，请重新输入");
+					return;
+				}
+				if (key == "")
+				{
+					step++;
+					Build();
+					return;
+				}
+				IniFileHelper.WriteValue(CharFile, sec, key, input);
+				step++;
+				Build();
+			}
+				
+		}
+
+		public void Jump(string input = "")
+		{
+			step = int.Parse(IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-To", (step + 1).ToString()));
+			Build();
+		}
+
+		public void Replace()
+		{
+			string oldstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-Old", "");
+			string newstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-New", "");
+			string item;
+			if (key == "")
+			{
+				foreach (string k in IniFileHelper.GetAllItemKeys(CharFile, sec))
+				{
+					item = IniFileHelper.GetStringValue(CharFile, sec, k, "");
+					IniFileHelper.WriteValue(CharFile, sec, k, item.Replace(oldstr, newstr));
+				}
+			}
+			else
+			{
+				item = IniFileHelper.GetStringValue(CharFile, sec, key, "");
+				IniFileHelper.WriteValue(CharFile, sec, key, item.Replace(oldstr, newstr));
+			}
+			step++;
+			Build();
+		}
+
+		public void DeleteBuildSec()
+		{
+			IniFileHelper.DeleteSection(CharFile, "CharBuilder");
+		}
+	}
+
+
+
+
+	class CharacterEditor
+	{
+		PrivateSession pSession;
+		string CharFile = "";
+		Dictionary<string, string> menu = new Dictionary<string, string>();
+
+		Dictionary<string, string> editormenu = new Dictionary<string, string>();
+
+		string sec = "";
+		string key = "";
+
+		string k = "";
+		string v = "";
+
+		string choice = "";
+
+		Regex mod = new Regex("(?<value>(\\+|-)[0-9]+?)\\[.+?\\]");
+
+		public CharacterEditor(PrivateSession ps)
+		{
+			pSession = ps;
+		}
+
+		public void Send(string msg)
+		{
+			pSession.Send(msg.Replace("&", "&amp;").Replace("[", "&#91;").Replace("]", "&#93;"));
+		}
+
+		public void SendMenu(string prefix = "", string suffix = "")
+		{
+			int i = 1;
+			foreach (KeyValuePair<string, string> s in menu)
+			{
+				prefix += "\n" + s.Key + ". " + s.Value;
+				i++;
+			}
+			if (suffix != "") prefix += "\n" + suffix;
+			Send(prefix);
+		}
+
+		public void Edit(string input = "")
+		{
+			input = input.Replace("&#91;", "[").Replace("&#93;", "]").Replace("&amp;", "&");
+			if (CharFile == "")
+			{
+				if (input == "")
+				{
+					ChooseChar();
+				}
+				else if (menu.ContainsKey(input))
+				{
+					CharFile = menu[input];
+					ShowMenu();
+				}
+				else
+				{
+					Send("输入的序号不正确，请重新输入");
+				}
+			}
+			else
+			{
+				if (menu.ContainsKey(input) || choice != "")
+				{
+					if (choice == "")
+					{
+						choice = menu[input];
+						input = choice;
+						menu = new Dictionary<string, string>();
+					}
+
+					switch (choice)
+					{
+						case "返回上一级":
+							Return();
+							ShowMenu();
+							break;
+						case "查看文件":
+							ViewFile();
+							break;
+						case "修改内容":
+							EditValue(input);
+							break;
+						case "修改项名":
+							EditKey(input);
+							break;
+						case "修改计数器当前值":
+							EditCounter(input);
+							break;
+						case "修改计数器最大值":
+							EditCounterMax(input);
+							break;
+						case "修改计数器恢复值":
+							EditCounterRest(input);
+							break;
+						case "修改列表项目":
+							EditList(input);
+							break;
+						case "修改列表恢复项":
+							EditListRest(input);
+							break;
+						case "添加项":
+							AddItem(input);
+							break;
+						case "删除该项":
+							DeleteItem(input);
+							break;
+						case "追加内容":
+							Append(input);
+							break;
+						case "修改调整值":
+							EditMod(input);
+							break;
+
+						default:
+							if (key == "")
+							{
+								if (sec == "")
+								{
+									if (IniFileHelper.GetAllSectionNames(CharFile).Contains(choice))
+									{
+										sec = choice;
+										ShowMenu();
+									}
+								}
+								else
+								{
+									if (IniFileHelper.GetAllItemKeys(CharFile, sec).Contains(choice))
+									{
+										key = choice;
+										ShowMenu();
+									}
+								}
+							}
+
+							break;
+					}
+				}
+				else
+				{
+					Send("输入序号有误，请重新输入");
+				}
+			}
+		}
+
+		public void ChooseChar()
+		{
+			DirectoryInfo d = new DirectoryInfo(PrivateSession.CSPath + "\\CharSettings");
+			menu = new Dictionary<string, string>();
+			foreach (FileInfo f in d.GetFiles("*.ini", SearchOption.AllDirectories)) 
+			{
+
+				if (IniFileHelper.GetStringValue(f.FullName, "CharInfo", "PlayerID", "") == pSession.QQid.ToString())
+				{
+					menu.Add(IniFileHelper.GetStringValue(f.FullName, "CharInfo", "CharID", "0"), f.FullName);
+				}
+			}
+			string m = "你的角色：\n";
+			foreach (KeyValuePair<string, string> e in menu)
+			{
+				m += e.Key + ". " + IniFileHelper.GetStringValue(e.Value, "CharInfo", "CharName", "未知名称")
+					+ "~" + IniFileHelper.GetStringValue(e.Value, "CharInfo", "CharDesc", "???") + "\n";
+			}
+			m += "输入序号选择需要编辑的角色";
+			pSession.InputHook = "CE";
+			Send(m);
+		}
+
+		public void ShowMenu()
+		{
+			string msg = "";
+			choice = "";
+			menu = new Dictionary<string, string>();
+			if (sec != "")
+			{
+				if (key != "")
+				{
+					msg = string.Format("{0}-{1}项目前为：\n{2}\n", sec, key,
+						IniFileHelper.GetStringValue(CharFile, sec, key, "")
+						.Replace("CT:", "计数器：").Replace("LT:", "列表："));
+					menu.Add("view", "查看文件");
+
+					menu.Add("1", "修改内容");
+					menu.Add("2", "追加内容");
+					menu.Add("3", "修改项名");
+					if (IniFileHelper.GetStringValue(CharFile, sec, key, "").StartsWith("CT:"))
+					{
+						if (IniFileHelper.GetStringValue(CharFile, sec, key + "-Max", "") != "")
+							msg += "\n该计数器最大值为" + IniFileHelper.GetStringValue(CharFile, sec, key + "-Max", "");
+						if (IniFileHelper.GetStringValue(CharFile, sec, key + "-Rest", "") != "")
+							msg += "\n该计数器恢复值为" + IniFileHelper.GetStringValue(CharFile, sec, key + "-Rest", "");
+						menu.Add("4", "修改计数器当前值");
+						menu.Add("5", "修改计数器最大值");
+						menu.Add("6", "修改计数器恢复值");
+					}
+					else if (IniFileHelper.GetStringValue(CharFile, sec, key, "").StartsWith("LT:"))
+					{
+						if (IniFileHelper.GetStringValue(CharFile, sec, key + "-Rest", "") != "")
+							msg += "\n该列表恢复值为" + IniFileHelper.GetStringValue(CharFile, sec, key + "-Rest", "");
+						menu.Add("4", "修改列表项目");
+						menu.Add("5", "修改列表恢复值");
+					}
+					else if (mod.IsMatch(IniFileHelper.GetStringValue(CharFile, sec, key, "")))
+					{
+						menu.Add("4", "修改调整值");
+					}
+					menu.Add("0", "返回上一级");
+					menu.Add("del", "删除该项");
+					SendMenu(msg, "\n输入【.end】结束编辑\n选择要进行的操作：");
+				}
+				else
+				{
+					msg = string.Format("{0}分区包括：\n", sec);
+					int i = 1;
+					foreach (string k in IniFileHelper.GetAllItemKeys(CharFile, sec))
+					{
+						menu.Add(i.ToString(), k);
+						i++;
+					}
+					menu.Add("0", "返回上一级");
+					menu.Add("add", "添加项");
+					menu.Add("view", "查看文件");
+					SendMenu(msg, "\n输入序号以编辑指定项目，或输入指令选择要进行的操作：");
+				}
+			}
+			else
+			{
+				msg = "该角色卡包括如下分区：\n";
+				int i = 1;
+				foreach (string k in IniFileHelper.GetAllSectionNames(CharFile))
+				{
+					menu.Add(i.ToString(), k);
+					i++;
+				}
+				menu.Add("view", "查看文件");
+				SendMenu(msg, "\n输入序号进入对应分区：");
+			}
+
+		}
+
+		public void ViewFile()
+		{
+			FileStream fs = new FileStream(CharFile, FileMode.Open);
+			StreamReader sr = new StreamReader(fs, Encoding.Default);
+			Send(sr.ReadToEnd());
+			sr.Close();
+			fs.Close();
+			ShowMenu();
+		}
+
+		public void Return()
+		{
+			if (sec != "")
+			{
+				if (key != "")
+				{
+					key = "";
+				}
+				else
+				{
+					sec = "";
+				}
+			}
+		}
+
+		public void Append(string input = "")
+		{
+			if (input == "追加内容")
+			{
+				Send(string.Format("请输入项目【{0}】的内容:{1}，之后追加的内容", key, IniFileHelper.GetStringValue(CharFile, sec, key, "")));
+			}
+			else
+			{
+				string oldvalue = IniFileHelper.GetStringValue(CharFile, sec, key, "");
+				IniFileHelper.WriteValue(CharFile, sec, key, oldvalue + input);
+				Send(string.Format("项目【{0}】的内容已由【{1}】改为【{2}】", key, oldvalue, oldvalue + input));
+				ShowMenu();
+			}
+		}
+
+
+		public void EditMod(string input = "")
+		{
+			if (input == "修改调整值")
+			{
+				string msg = "";
+				k = "";
+				int i = 1;
+				editormenu = new Dictionary<string, string>();
+				foreach (Match m in mod.Matches(IniFileHelper.GetStringValue(CharFile, sec, key, "")))
+				{
+					editormenu.Add(i.ToString(), m.ToString());
+					msg += i + ". " + m.ToString() + "\n";
+					i++;
+				}
+				msg += "请输入要修改的调整值的序号";
+				Send(msg);
+			}
+			else
+			{
+				if (k == "")
+				{
+					if (editormenu.ContainsKey(input))
+					{
+						k = editormenu[input];
+						Send(string.Format("请输入{0}的新调整值", k));
+					}
+					else
+					{
+						Send("输入序号有误");
+					}
+				}
+				else
+				{
+					if (int.TryParse(input, out int vlu))
+					{
+						Regex desc = new Regex("\\[.+?\\]");
+						string newvalue = (vlu < 0 ? "" : "+") + vlu + desc.Match(k).ToString();
+						IniFileHelper.WriteValue(CharFile, sec, key,
+							IniFileHelper.GetStringValue(CharFile, sec, key, "").Replace(k, newvalue));
+						Send(string.Format("{0}的新调整值为{1}\n目前该项的值为{2}", k, newvalue,
+							IniFileHelper.GetStringValue(CharFile, sec, key, "")));
+						ShowMenu();
+					}
+					else
+					{
+						Send("输入不是整数");
+					}
+				}
+			}
+		}
+
+		public void AddItem(string input = "")
+		{
+			if (input == "添加项")
+			{
+				Send("请输入新加项的名称");
+			}
+			else
+			{
+				if (v == "")
+				{
+					if (k == "")
+					{
+						k = input;
+						Send("请输入" + k + "的内容");
+					}
+					else
+					{
+						v = input;
+						Send(string.Format("你将要添加【{0}】,内容为：\n{1}\n确认请输入1，取消请输入任意其他字符", k, v));
+					}
+				}
+				else
+				{
+					if (input == "1")
+					{
+						IniFileHelper.WriteValue(CharFile, sec, k, v);
+						Send("添加完成");
+					}
+					else
+					{
+						Send("输入已取消");
+					}
+					k = "";
+					v = "";
+					ShowMenu();
+				}
+				
+			}
+		}
+
+		public void DeleteItem(string input = "")
+		{
+			if (input == "删除该项")
+			{
+				Send(string.Format("你将要删除项目【{0}】，其当前值为\n{1}\n确认请输入del，取消请输入其他字符"
+					, key, IniFileHelper.GetStringValue(CharFile, sec, key, "")));
+			}
+			else
+			{
+				if (input == "del")
+				{
+					IniFileHelper.DeleteKey(CharFile, sec, key);
+					Send("已成功删除" + key);
+					ShowMenu();
+				}
+				else
+				{
+					Return();
+					ShowMenu();
+				}
+			}
+		}
+
+		public void EditKey(string input = "")
+		{
+			if (input == "修改项名")
+			{
+				Send(string.Format("请输入项目【{0}】的新名称", key));
+			}
+			else
+			{
+				string oldname = key;
+				IniFileHelper.WriteValue(CharFile, sec, input, IniFileHelper.GetStringValue(CharFile, sec, key, ""));
+				IniFileHelper.DeleteKey(CharFile, sec, key);
+				Send(string.Format("项目【{0}】的名称已改为【{1}】", oldname, input));
+				Return();
+				ShowMenu();
+			}
+		}
+
+		public void EditValue(string input = "")
+		{
+			if (input == "修改内容")
+			{
+				Send(string.Format("请输入项目【{0}】的新内容", key));
+			}
+			else
+			{
+				string oldvalue = IniFileHelper.GetStringValue(CharFile, sec, key, "");
+				IniFileHelper.WriteValue(CharFile, sec, key, input);
+				Send(string.Format("项目【{0}】的内容已由【{1}】改为【{2}】", key, oldvalue, input));
+				ShowMenu();
+			}
+		}
+
+		public void EditCounter(string input = "")
+		{
+			if (input == "修改计数器当前值")
+			{
+				Send(string.Format("请输入计数器【{0}】的新数值", key));
+			}
+			else
+			{
+				if (float.TryParse(input, out float value))
+				{
+					Regex counter = new Regex("\\(.+?\\)");
+					string oldvalue = IniFileHelper.GetStringValue(CharFile, sec, key, "");
+					string olddesc = counter.Match(IniFileHelper.GetStringValue(CharFile, sec, key, "")).ToString();
+					IniFileHelper.WriteValue(CharFile, sec, key, "CT:" + value + olddesc);
+					Send(string.Format("计数器【{0}】的值已由【{1}】改为【{2}】", key, oldvalue, value.ToString()));
+					ShowMenu();
+				}
+				else
+				{
+					Send("输入的数值有误，请重新输入");
+				}
+			}
+		}
+
+		public void EditCounterMax(string input = "")
+		{
+			if (input == "修改计数器最大值")
+			{
+				Send(string.Format("请输入计数器【{0}】的最大值", key));
+			}
+			else
+			{
+				if (float.TryParse(input, out float value))
+				{
+					Regex max = new Regex("/[0-9.]+");
+					string oldvalue = IniFileHelper.GetStringValue(CharFile, sec, key + "-Max", "");
+					string desc = max.Replace(IniFileHelper.GetStringValue(CharFile, sec, key, ""), "/" + value).ToString();
+					IniFileHelper.WriteValue(CharFile, sec, key, desc);
+					IniFileHelper.WriteValue(CharFile, sec, key + "-Max", value.ToString());
+					Send(string.Format("计数器【{0}】的最大值已由【{1}】改为【{2}】", key, oldvalue, value.ToString()));
+					ShowMenu();
+				}
+				else
+				{
+					Send("输入的数值有误，请重新输入");
+				}
+			}
+		}
+
+		public void EditCounterRest(string input = "")
+		{
+			if (input == "修改计数器恢复值")
+			{
+				Send(string.Format("请输入计数器【{0}】的恢复值\n以=开头则每次恢复至该数值\n以+开头则每次增加该数值\n以-开头则每次减少该数值", key));
+			}
+			else
+			{
+				if (input.StartsWith("+") || input.StartsWith("-") || input.StartsWith("="))
+				{
+					if (float.TryParse(input.Substring(1), out float value))
+					{
+						string oldvalue = IniFileHelper.GetStringValue(CharFile, sec, key + "-Rest", "");
+						IniFileHelper.WriteValue(CharFile, sec, key + "-Rest", input);
+						Send(string.Format("计数器【{0}】的恢复值已由【{1}】改为【{2}】", key, oldvalue, input));
+						ShowMenu();
+					}
+					else
+					{
+						Send("输入的数值有误，请重新输入");
+					}
+				}
+				else
+				{
+					Send("恢复值必须以+、-、=开头，请重新输入");
+				}
+			}
+		}
+
+		public void EditList(string input = "")
+		{
+			if (input == "修改列表项目")
+			{
+				Send(string.Format("请对列表【{0}】项目进行修改\n"
+					+ "\n以+开头的项则增加该项目数量\n以-开头的项则减少该项目数量\n以空格分开每个修改项，在项目后用xN表示数量"
+					+ "\n例如：+干粮x4 -饮水x2\n输入空格退出列表编辑", key));
+			}
+			else if (input == " ")
+			{
+				ShowMenu();
+			}
+			else
+			{
+				Dictionary<string, int> items = new Dictionary<string, int>();
+				string[] opt = input.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+				int num;
+				string name;
+				Regex itemnum = new Regex("x[0-9]+");
+				foreach (string str in (IniFileHelper.GetStringValue(CharFile, "CharMemo", key, "")
+					.Substring(3).Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries)))
+				{
+					num = Tools.DiceNum("+" + itemnum.Match(str).ToString().Replace("x", ""));
+					name = itemnum.Replace(str, "").ToString();
+					if (items.ContainsKey(name))
+					{
+						items[name] += num == 0 ? 1 : num;
+					}
+					else
+					{
+						items.Add(name, num == 0 ? 1 : num);
+					}
+					
+				}
+				foreach (string str in opt)
+				{
+					if (str.StartsWith("+"))
+					{
+						num = Tools.DiceNum("+" + itemnum.Match(str).ToString().Replace("x", ""));
+						name = itemnum.Replace(str, "").ToString().Substring(1);
+						if (num == 0) num = 1;
+						if (items.ContainsKey(name))
+						{
+							items[name] += num;
+						}
+						else
+						{
+							items.Add(name, num);
+						}
+					}
+					else if (str.StartsWith("-"))
+					{
+						num = Tools.DiceNum("+" + itemnum.Match(str).ToString().Replace("x", ""));
+						name = itemnum.Replace(str, "").ToString().Substring(1);
+						if (num == 0) num = 1;
+						if (items.ContainsKey(name))
+						{
+							items[name] -= num;
+						}
+						else
+						{
+							Send("没有" + name);
+							return;
+						}
+						if (items.ContainsKey(name) && items[name] == 0) items.Remove(name);
+						if (items.ContainsKey(name) && items[name] < 0)
+						{
+							Send(name + "不足");
+							return;
+						}
+					}
+				}
+				string value = "";
+				foreach (KeyValuePair<string, int> i in items)
+				{
+					value += ";" + i.Key + "x" + i.Value;
+				}
+				if (value.StartsWith(";")) value = value.Substring(1);
+				IniFileHelper.WriteValue(CharFile, sec, key, "LT:" + value);
+				Send(IniFileHelper.GetStringValue(CharFile, sec, key, "").Replace("LT:", "列表值为：").Replace(";", "\n"));
+			}
+		}
+
+		public void EditListRest(string input = "")
+		{
+			if (input == "修改列表恢复值")
+			{
+				Send(string.Format("请输入列表【{0}】的恢复值\n以=开头则每次恢复时设置为该序列，此时每项之间用分号分隔" +
+					"\n以+开头的项则增加该项目数量\n以-开头的项则减少该项目数量" +
+					"\n以空格分开每个+-修改项，在项目后用xN表示数量" +
+					"\n例如：=魔法飞弹x1;燃烧之手x2" +
+					"\n或：-干粮 -饮水 +栗子", key));
+			}
+			else
+			{
+				if (input.StartsWith("+") || input.StartsWith("-") || input.StartsWith("="))
+				{
+					string oldvalue = IniFileHelper.GetStringValue(CharFile, sec, key, "");
+					IniFileHelper.WriteValue(CharFile, sec, key, input);
+					Send(string.Format("列表【{0}】的恢复值已由【{1}】改为【{2}】", key, oldvalue, input));
+					ShowMenu();
+				}
+				else
+				{
+					Send("恢复值必须以+、-、=开头，请重新输入");
+				}
+			}
+		}
+
+	}
+
+
+
+
+
+
 }
 

@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 
-namespace Wennx.CQP.CSharpPlugins.TRPGBot
+namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 {
     public partial class FormSettings : Form
     {

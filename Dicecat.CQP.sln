@@ -5,7 +5,7 @@ VisualStudioVersion = 15.0.26730.16
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "CSharpPlugins", "CSharpPlugins", "{0CB0267E-7447-497F-ABB7-DB45CF5A4EF4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Wennx.CQP.CSharpPlugins.TRPGBot", "src\Flexlive.CQP.CSharpPlugins.Demo\Wennx.CQP.CSharpPlugins.TRPGBot.csproj", "{5D0BDC2D-DA77-4B06-A29C-2476C5BAA113}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dicecat.CQP.CSharpPlugins.TRPGBot", "src\Flexlive.CQP.CSharpPlugins.Demo\Dicecat.CQP.CSharpPlugins.TRPGBot.csproj", "{5D0BDC2D-DA77-4B06-A29C-2476C5BAA113}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

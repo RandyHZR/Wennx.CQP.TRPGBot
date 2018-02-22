@@ -7,8 +7,8 @@
     <ProjectGuid>{5D0BDC2D-DA77-4B06-A29C-2476C5BAA113}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Wennx.CQP.CSharpPlugins.TRPGBot</RootNamespace>
-    <AssemblyName>Wennx.CQP.CSharpPlugins.TRPGBot</AssemblyName>
+    <RootNamespace>Dicecat.CQP.CSharpPlugins.TRPGBot</RootNamespace>
+    <AssemblyName>Dicecat.CQP.CSharpPlugins.TRPGBot</AssemblyName>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <SccProjectName>SAK</SccProjectName>

@@ -1,0 +1,16 @@
+C:\Users\wennx\source\repos\Wennx.CQP.TRPGBot\Bin\Dicecat.CQP.CSharpPlugins.TRPGBot.dll
+C:\Users\wennx\source\repos\Wennx.CQP.TRPGBot\Bin\Dicecat.CQP.CSharpPlugins.TRPGBot.pdb
+C:\Users\wennx\source\repos\Wennx.CQP.TRPGBot\src\Flexlive.CQP.CSharpPlugins.Demo\obj\Debug\Dicecat.CQP.CSharpPlugins.TRPGBot.csprojResolveAssemblyReference.cache
+C:\Users\wennx\source\repos\Wennx.CQP.TRPGBot\src\Flexlive.CQP.CSharpPlugins.Demo\obj\Debug\Dicecat.CQP.CSharpPlugins.TRPGBot.FormSettings.resources
+C:\Users\wennx\source\repos\Wennx.CQP.TRPGBot\src\Flexlive.CQP.CSharpPlugins.Demo\obj\Debug\Dicecat.CQP.CSharpPlugins.TRPGBot.csproj.GenerateResource.Cache
+C:\Users\wennx\source\repos\Wennx.CQP.TRPGBot\src\Flexlive.CQP.CSharpPlugins.Demo\obj\Debug\Dicecat.CQP.CSharpPlugins.TRPGBot.csproj.CoreCompileInputs.cache
+C:\Users\wennx\source\repos\Wennx.CQP.TRPGBot\src\Flexlive.CQP.CSharpPlugins.Demo\obj\Debug\Dicecat.CQP.CSharpPlugins.TRPGBot.dll
+C:\Users\wennx\source\repos\Wennx.CQP.TRPGBot\src\Flexlive.CQP.CSharpPlugins.Demo\obj\Debug\Dicecat.CQP.CSharpPlugins.TRPGBot.pdb
+C:\Users\wennx\source\repos\Dicecat.CQP.TRPGBot\Bin\Dicecat.CQP.CSharpPlugins.TRPGBot.dll
+C:\Users\wennx\source\repos\Dicecat.CQP.TRPGBot\Bin\Dicecat.CQP.CSharpPlugins.TRPGBot.pdb
+C:\Users\wennx\source\repos\Dicecat.CQP.TRPGBot\src\Flexlive.CQP.CSharpPlugins.Demo\obj\Debug\Dicecat.CQP.CSharpPlugins.TRPGBot.csprojResolveAssemblyReference.cache
+C:\Users\wennx\source\repos\Dicecat.CQP.TRPGBot\src\Flexlive.CQP.CSharpPlugins.Demo\obj\Debug\Dicecat.CQP.CSharpPlugins.TRPGBot.FormSettings.resources
+C:\Users\wennx\source\repos\Dicecat.CQP.TRPGBot\src\Flexlive.CQP.CSharpPlugins.Demo\obj\Debug\Dicecat.CQP.CSharpPlugins.TRPGBot.csproj.GenerateResource.Cache
+C:\Users\wennx\source\repos\Dicecat.CQP.TRPGBot\src\Flexlive.CQP.CSharpPlugins.Demo\obj\Debug\Dicecat.CQP.CSharpPlugins.TRPGBot.csproj.CoreCompileInputs.cache
+C:\Users\wennx\source\repos\Dicecat.CQP.TRPGBot\src\Flexlive.CQP.CSharpPlugins.Demo\obj\Debug\Dicecat.CQP.CSharpPlugins.TRPGBot.dll
+C:\Users\wennx\source\repos\Dicecat.CQP.TRPGBot\src\Flexlive.CQP.CSharpPlugins.Demo\obj\Debug\Dicecat.CQP.CSharpPlugins.TRPGBot.pdb

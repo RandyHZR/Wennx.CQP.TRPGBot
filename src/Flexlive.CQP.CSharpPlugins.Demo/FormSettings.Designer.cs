@@ -1,4 +1,4 @@
-﻿namespace Wennx.CQP.CSharpPlugins.TRPGBot
+﻿namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 {
     partial class FormSettings
     {
