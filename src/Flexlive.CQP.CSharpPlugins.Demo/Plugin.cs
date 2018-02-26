@@ -296,6 +296,7 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 					if (InputHook == "")
 					{
 						InputHook = "AM";
+						Send("请贴入地图图片，并带上格式字符串：CxRy代表x列y行的地图，如果地图本身没有网格请加上NG");
 					}
 					break;
 				default:
@@ -1661,7 +1662,7 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 			{
 				if (msg.StartsWith(".movs"))
 				{
-					drs = Icons.Select("owner = " + QQid + "AND id LIKE 's*'");
+					drs = Icons.Select("owner = '" + QQid + "' AND id LIKE 's*'");
 					if (drs.Length == 1)
 					{
 						IconCounter[new Point((int)drs[0]["X"], (int)drs[0]["Y"])]--;
@@ -1673,7 +1674,7 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 				}
 				else
 				{
-					drs = Icons.Select("owner = " + QQid + "AND id LIKE 'c*'");
+					drs = Icons.Select("owner = '" + QQid + "' AND id LIKE 'c*'");
 					if (drs.Length == 1)
 					{
 						IconCounter[new Point((int)drs[0]["X"], (int)drs[0]["Y"])]--;
