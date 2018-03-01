@@ -275,12 +275,27 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 					Search(QQid, msg, MsgID);
 					break;
 				case ".draw":
-					Draw(QQid, msg, MsgID);
+					if (msgstr.Length > 1)
+					{
+						Draw(QQid, msg, MsgID);
+					}
+					else
+					{
+						ListDeck(QQid, msg);
+					}
+					
 					break;
 				case ".rc":
 					if (InputHook != "") break;
-					rc = new RandomCreator(msgstr[1], this);
-					rc.Build();
+					if (msgstr.Length > 1)
+					{
+						rc = new RandomCreator(msgstr[1], this);
+						rc.Build();
+					}
+					else
+					{
+						Send( RandomCreator.List());
+					}
 					break;
 				case ".cb":
 					if (InputHook != "") break;
@@ -475,6 +490,17 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 				Send(CQ.CQCode_Image(sel.Name.Replace("&", "&amp;").Replace(",", "&#44;").Replace("[", "&#91;").Replace("]", "&#93;")));
 				SearchMenu.Remove(QQid);
 			}
+		}
+
+		public void ListDeck(long QQid, string msg)
+		{
+			DirectoryInfo d = new DirectoryInfo(CSPath + "\\Decks");
+			msg = "目前可用的牌组有：";
+			foreach (DirectoryInfo di in d.GetDirectories())
+			{
+				msg += "\n" + di.Name;
+			}
+			Send(msg);
 		}
 
 		public void Draw(long QQid, string msg, int msgID)
@@ -3751,6 +3777,16 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 			log.Close();
 		}
 
+		public static string List()
+		{
+			DirectoryInfo d = new DirectoryInfo(CQ.GetCSPluginsFolder() + @"\RandomCreator");
+			string msg = "目前可用的生成脚本有：";
+			foreach (FileInfo fi in d.GetFiles("*.ini"))
+			{
+				msg += "\n" + fi.Name.Replace(fi.Extension, "");
+			}
+			return msg;
+		}
 
 		public void Build(string i = "")
 		{
