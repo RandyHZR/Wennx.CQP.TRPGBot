@@ -36,7 +36,7 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 
 			this.Name = "Dicecat the TRPG Bot";
 			this.Version = new Version("1.0.0.0");
-			this.Author = "Wennx";
+			this.Author = "【数据删除】";
 			this.Description = "史诗逆天骰喵";
 		}
 
@@ -957,7 +957,7 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 					SideListSet(QQid, msgstr[1], msg);
 					break;
 				case ".cdis":
-					CharDisbinding(QQid);
+					CharDisbinding(QQid, msg);
 					break;
 				case ".m":
 					Memory(QQid, msg, MsgID);
@@ -1424,12 +1424,12 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 					CSPath + "\\Icons\\" + IniFileHelper.GetStringValue(r.Value, "CharInfo", "Icon", ""), r.Key);
 				IconCounter[um]++;
 				str += "\nc" + icoid + "    " + IniFileHelper.GetStringValue(r.Value, "CharInfo", "CharName", "");
-				if (IniFileHelper.GetStringValue(r.Value, "SideMarco", "SideName", "") != "")
+				if (IniFileHelper.GetStringValue(r.Value, "SideMacro", "SideName", "") != "")
 				{
-					Icons.Rows.Add("s" + icoid, -1, -1, IniFileHelper.GetStringValue(r.Value, "SideMarco", "Size", "x1"), 
-						CSPath + "\\Icons\\" + IniFileHelper.GetStringValue(r.Value, "SideMarco", "Icon", ""), r.Key);
+					Icons.Rows.Add("s" + icoid, -1, -1, IniFileHelper.GetStringValue(r.Value, "SideMacro", "Size", "x1"), 
+						CSPath + "\\Icons\\" + IniFileHelper.GetStringValue(r.Value, "SideMacro", "Icon", ""), r.Key);
 					IconCounter[um]++;
-					str += "\ns" + icoid + "    " + IniFileHelper.GetStringValue(r.Value, "SideMarco", "SideName", "");
+					str += "\ns" + icoid + "    " + IniFileHelper.GetStringValue(r.Value, "SideMacro", "SideName", "");
 				}
 				icoid++;
 			}
@@ -1945,10 +1945,10 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 				Icons.Rows.Add("c" + icoid, -1, -1, IniFileHelper.GetStringValue(CharBinding[QQid], "CharInfo", "Size", "x1"),
 					CSPath + "\\Icons\\" + IniFileHelper.GetStringValue(CharBinding[QQid], "CharInfo", "Icon", ""), QQid);
 				IconCounter[um]++;
-				if (IniFileHelper.GetStringValue(CharBinding[QQid], "SideMarco", "SideName", "") != "")
+				if (IniFileHelper.GetStringValue(CharBinding[QQid], "SideMacro", "SideName", "") != "")
 				{
-					Icons.Rows.Add("s" + icoid, -1, -1, IniFileHelper.GetStringValue(CharBinding[QQid], "SideMarco", "Size", "x1"),
-						CSPath + "\\Icons\\" + IniFileHelper.GetStringValue(CharBinding[QQid], "SideMarco", "Icon", ""), QQid);
+					Icons.Rows.Add("s" + icoid, -1, -1, IniFileHelper.GetStringValue(CharBinding[QQid], "SideMacro", "Size", "x1"),
+						CSPath + "\\Icons\\" + IniFileHelper.GetStringValue(CharBinding[QQid], "SideMacro", "Icon", ""), QQid);
 					IconCounter[um]++;
 				}
 				icoid++;
@@ -1957,13 +1957,36 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 				IniFileHelper.GetStringValue(CharBinding[QQid].ToString(), "CharInfo", "CharName", "")));
 		}
 
-		public void CharDisbinding(long QQid)
+		public void CharDisbinding(long QQid, string msg)
 		{
-			CharBinding.Remove(QQid);
-			ArrangeColor(QQid);
-			face.Remove(QQid);
-			IniFileHelper.DeleteKey(CSPath + "\\Config.ini", "G" + GroupID + "_CharBinding", QQid.ToString());
-			Send(string.Format("{0} 解除绑定了当前角色", CQ.CQCode_At(QQid)), QQid);
+			if (CQAT.IsMatch(msg) && IsAdmin(QQid))
+			{
+				long qq;
+				string rtmsg = "已解除以下绑定角色";
+				foreach (Match m in CQAT.Matches(msg))
+				{
+					qq = long.Parse(m.ToString().Replace("[CQ:at,qq=", "").Replace("]", ""));
+					if (CharBinding.ContainsKey(qq))
+					{
+						rtmsg += "\n" + CQ.CQCode_At(qq) + "---" + IniFileHelper.GetStringValue(CharBinding[qq], "CharInfo", "CharName", "???");
+						CharBinding.Remove(qq);
+						ArrangeColor(qq);
+						face.Remove(qq);
+						IniFileHelper.DeleteKey(CSPath + "\\Config.ini", "G" + GroupID + "_CharBinding", qq.ToString());
+						
+					}
+				}
+				Send(rtmsg);
+			}
+			else
+			{
+				CharBinding.Remove(QQid);
+				ArrangeColor(QQid);
+				face.Remove(QQid);
+				IniFileHelper.DeleteKey(CSPath + "\\Config.ini", "G" + GroupID + "_CharBinding", QQid.ToString());
+				Send(string.Format("{0} 解除绑定了当前角色", CQ.CQCode_At(QQid)), QQid);
+			}
+			
 		}
 
 		public void CharModify(long QQid, string key, string value)
@@ -1981,14 +2004,14 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 				while (!sr.EndOfStream)
 				{
 					str = sr.ReadLine();
-					if (str.StartsWith("[CharMarco]")) sectControl = true;
+					if (str.StartsWith("[CharMacro]")) sectControl = true;
 					if (sectControl && str.StartsWith(key + "="))
 					{
 						str = key + "=" + value;
 						changed = true;
 					}
 					
-					if (sectControl && str.StartsWith("[") && (str != "[CharMarco]"))
+					if (sectControl && str.StartsWith("[") && (str != "[CharMacro]"))
 					{
 						sectControl = false;
 						if (!changed) sw.WriteLine(key + "=" + value);
@@ -2024,14 +2047,14 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 				while (!sr.EndOfStream)
 				{
 					str = sr.ReadLine();
-					if (str.StartsWith("[SideMarco]")) sectControl = true;
+					if (str.StartsWith("[SideMacro]")) sectControl = true;
 					if (sectControl && str.StartsWith(key + "="))
 					{
 						str = key + "=" + value;
 						changed = true;
 					}
 
-					if (sectControl && str.StartsWith("[") && (str != "[SideMarco]"))
+					if (sectControl && str.StartsWith("[") && (str != "[SideMacro]"))
 					{
 						sectControl = false;
 						if (!changed) sw.WriteLine(key + "=" + value);
@@ -2057,8 +2080,8 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 			string orirsn = rollstr.Replace(".r ", "");
 			if (CharBinding.ContainsKey(QQid))
 			{
-				string reps = IniFileHelper.GetStringValue(CharBinding[QQid], "MarcoReplace", "DefaultReplace", "");
-				foreach (string str in IniFileHelper.GetAllItems(CharBinding[QQid], "MarcoReplace"))
+				string reps = IniFileHelper.GetStringValue(CharBinding[QQid], "MacroReplace", "DefaultReplace", "");
+				foreach (string str in IniFileHelper.GetAllItems(CharBinding[QQid], "MacroReplace"))
 				{
 					string[] strs = str.Split('=');
 					if (orirsn.Contains(strs[0]) && strs[0] != "DefaultReplace" && strs.Length > 1) 
@@ -2078,10 +2101,10 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 					rollstr = rpre.Replace(rollstr, "@@@@");
 					foreach (Match m in replaces)
 					{
-						if (IniFileHelper.GetStringValue(CharBinding[QQid], "CharMarco", m.ToString(), "") != "")
+						if (IniFileHelper.GetStringValue(CharBinding[QQid], "CharMacro", m.ToString(), "") != "")
 						{
 							rollstr = recov.Replace(rollstr,
-								IniFileHelper.GetStringValue(CharBinding[QQid], "CharMarco", m.ToString(), ""), 1);
+								IniFileHelper.GetStringValue(CharBinding[QQid], "CharMacro", m.ToString(), ""), 1);
 							nonreplaced = false;
 						}
 						else
@@ -2131,8 +2154,8 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 			string orirsn = rollstr.Replace(".rs ", "");
 			if (CharBinding.ContainsKey(QQid))
 			{
-				string reps = IniFileHelper.GetStringValue(CharBinding[QQid], "MarcoReplace", "DefaultReplace", "");
-				foreach (string str in IniFileHelper.GetAllItems(CharBinding[QQid], "MarcoReplace"))
+				string reps = IniFileHelper.GetStringValue(CharBinding[QQid], "MacroReplace", "DefaultReplace", "");
+				foreach (string str in IniFileHelper.GetAllItems(CharBinding[QQid], "MacroReplace"))
 				{
 					string[] strs = str.Split('=');
 					if (orirsn.Contains(strs[0]) && strs[0] != "DefaultReplace" && strs.Length > 1)
@@ -2152,10 +2175,10 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 					rollstr = rpre.Replace(rollstr, "@@@@");
 					foreach (Match m in replaces)
 					{
-						if (IniFileHelper.GetStringValue(CharBinding[QQid], "CharMarco", m.ToString(), "") != "")
+						if (IniFileHelper.GetStringValue(CharBinding[QQid], "CharMacro", m.ToString(), "") != "")
 						{
 							rollstr = recov.Replace(rollstr,
-								IniFileHelper.GetStringValue(CharBinding[QQid], "CharMarco", m.ToString(), ""), 1);
+								IniFileHelper.GetStringValue(CharBinding[QQid], "CharMacro", m.ToString(), ""), 1);
 							nonreplaced = false;
 						}
 						else
@@ -2183,14 +2206,14 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 			{
 				msg += String.Format("[{0}]{1}-{2}：",
 						IniFileHelper.GetStringValue(CharBinding[QQid].ToString(), "CharInfo", "CharName", CQ.CQCode_At(QQid)),
-						IniFileHelper.GetStringValue(CharBinding[QQid].ToString(), "SideMarco", "SideName", "???"),
+						IniFileHelper.GetStringValue(CharBinding[QQid].ToString(), "SideMacro", "SideName", "???"),
 						rsn[2]);
 			}
 			else
 			{
 				msg += String.Format("[{0}]{1}-{2}：",
 						IniFileHelper.GetStringValue(CharBinding[QQid].ToString(), "CharInfo", "CharName", CQ.CQCode_At(QQid)),
-						IniFileHelper.GetStringValue(CharBinding[QQid].ToString(), "SideMarco", "SideName", "???"),
+						IniFileHelper.GetStringValue(CharBinding[QQid].ToString(), "SideMacro", "SideName", "???"),
 						orirsn);
 			}
 			foreach (string s in substr)
@@ -2398,14 +2421,14 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 				if (CharBinding.ContainsKey(qq))
 				{
 					rtn += string.Format("\n{0}：{1}",
-						IniFileHelper.GetStringValue(CharBinding[qq], "SideMarco", "SideName", CQ.CQCode_At(qq)),
+						IniFileHelper.GetStringValue(CharBinding[qq], "SideMacro", "SideName", CQ.CQCode_At(qq)),
 						IniFileHelper.GetStringValue(CharBinding[qq], "SideMemo", key, "未找到").Replace(";", "\n").Replace("[", "&#91;").Replace("]", "&#93;").Replace("CT:", ""));
 				}
 			}
 			if (at.Matches(msg).Count == 0)
 			{
 				rtn += string.Format("\n{0}：{1}",
-						IniFileHelper.GetStringValue(CharBinding[QQid], "SideMarco", "SideName", CQ.CQCode_At(QQid)),
+						IniFileHelper.GetStringValue(CharBinding[QQid], "SideMacro", "SideName", CQ.CQCode_At(QQid)),
 						IniFileHelper.GetStringValue(CharBinding[QQid], "SideMemo", key, "未找到").Replace(";", "\n").Replace("[", "&#91;").Replace("]", "&#93;").Replace("CT:", ""));
 			}
 			Send(rtn, QQid);
@@ -2451,7 +2474,7 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 				File.Replace(CSPath + "\\CharSettings\\tmp.ini", CharBinding[QQid], CSPath + "\\CharSettings\\LastChange.bak");
 				if (!quiet) Send(string.Format("[{0}]{1}-{2}现为:{3}", 
 					IniFileHelper.GetStringValue(CharBinding[QQid], "CharInfo", "CharName", CQ.CQCode_At(QQid)),
-					  IniFileHelper.GetStringValue(CharBinding[QQid], "SideMarco", "SideName", ""),
+					  IniFileHelper.GetStringValue(CharBinding[QQid], "SideMacro", "SideName", ""),
 					  key, value.Replace("CT:", "").Replace("LT:", "")), QQid);//.Replace("CT:", "计数器：").Replace("LT:", "列表：")
 			}
 
@@ -2612,9 +2635,9 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 					}
 				}
 				if (premsg == rtnstr) rtnstr += " 没有变化";
-				if (IniFileHelper.GetStringValue(CharBinding[qq].ToString(), "SideMarco", "SideName", "") != "")
+				if (IniFileHelper.GetStringValue(CharBinding[qq].ToString(), "SideMacro", "SideName", "") != "")
 				{
-					rtnstr += "\n" + IniFileHelper.GetStringValue(CharBinding[qq].ToString(), "SideMarco", "SideName", "") + ":";
+					rtnstr += "\n" + IniFileHelper.GetStringValue(CharBinding[qq].ToString(), "SideMacro", "SideName", "") + ":";
 					premsg = rtnstr;
 					foreach (string key in IniFileHelper.GetAllItemKeys(CharBinding[qq], "SideMemo"))
 					{
@@ -2738,12 +2761,12 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 			int dex;
 			if (msg.StartsWith("s-"))
 			{
-				dex = Tools.DiceNum(IniFileHelper.GetStringValue(CharBinding[(long)QQid], "SideMarco", "先攻", "???")
+				dex = Tools.DiceNum(IniFileHelper.GetStringValue(CharBinding[(long)QQid], "SideMacro", "先攻", "???")
 					.Replace("d20", "+0"));
 			}
 			else
 			{
-				dex = Tools.DiceNum(IniFileHelper.GetStringValue(CharBinding[(long)QQid], "CharMarco", "先攻", "???")
+				dex = Tools.DiceNum(IniFileHelper.GetStringValue(CharBinding[(long)QQid], "CharMacro", "先攻", "???")
 					.Replace("d20", "+0"));
 			}
 			
@@ -2761,7 +2784,7 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 					if (((string)dr["Action"]).StartsWith("s-"))
 					{
 						rtmsg += string.Format("\n{0}-{1}:{2}",
-								IniFileHelper.GetStringValue(CharBinding[(long)dr["ID"]], "SideMarco", "SideName", "???"),
+								IniFileHelper.GetStringValue(CharBinding[(long)dr["ID"]], "SideMacro", "SideName", "???"),
 								(((string)dr["Action"]).StartsWith("s-h") || ((string)dr["Action"]).StartsWith("s-l"))
 								? ((string)dr["Action"]).Substring(3) : ((string)dr["Action"]).Substring(2), dr["Dice"]);
 					}
@@ -2788,12 +2811,12 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 			{
 				if (((string)dr["Action"]).StartsWith("s-"))
 				{
-					dr["Dex"] = int.Parse(IniFileHelper.GetStringValue(CharBinding[(long)dr["ID"]], "SideMarco", "敏捷", "???")
+					dr["Dex"] = int.Parse(IniFileHelper.GetStringValue(CharBinding[(long)dr["ID"]], "SideMacro", "敏捷", "???")
 						.Replace("d20", "").Replace("[敏捷]", ""));
 				}
 				else
 				{
-					dr["Dex"] = int.Parse(IniFileHelper.GetStringValue(CharBinding[(long)dr["ID"]], "CharMarco", "敏捷", "???")
+					dr["Dex"] = int.Parse(IniFileHelper.GetStringValue(CharBinding[(long)dr["ID"]], "CharMacro", "敏捷", "???")
 						.Replace("d20", "").Replace("[敏捷]", ""));
 				}
 					
@@ -2845,7 +2868,7 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 				if (((string)dr["Action"]).StartsWith("s-"))
 				{
 					rtmsg += string.Format("\n{0}-{1}:{2}({3}{4})",
-						IniFileHelper.GetStringValue(CharBinding[(long)dr["ID"]], "SideMarco", "SideName", "???"),
+						IniFileHelper.GetStringValue(CharBinding[(long)dr["ID"]], "SideMacro", "SideName", "???"),
 						((string)dr["Action"]).Substring(2), dr["Result"], dr["Reroll"], dr["Roll"]);
 				}
 				else
@@ -2938,8 +2961,8 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 			foreach (KeyValuePair<long, string> c in CharBinding)
 			{
 				rollstr = key;
-				string reps = IniFileHelper.GetStringValue(c.Value, "MarcoReplace", "DefaultReplace", "");
-				foreach (string str in IniFileHelper.GetAllItems(c.Value, "MarcoReplace"))
+				string reps = IniFileHelper.GetStringValue(c.Value, "MacroReplace", "DefaultReplace", "");
+				foreach (string str in IniFileHelper.GetAllItems(c.Value, "MacroReplace"))
 				{
 					string[] strs = str.Split('=');
 					if (rollstr.Contains(strs[0]) && strs[0] != "DefaultReplace" && strs.Length > 1)
@@ -2959,10 +2982,10 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 					rollstr = rpre.Replace(rollstr, "@@@@");
 					foreach (Match mt in replaces)
 					{
-						if (IniFileHelper.GetStringValue(c.Value, "CharMarco", mt.ToString(), "") != "")
+						if (IniFileHelper.GetStringValue(c.Value, "CharMacro", mt.ToString(), "") != "")
 						{
 							rollstr = recov.Replace(rollstr,
-								IniFileHelper.GetStringValue(c.Value, "CharMarco", mt.ToString(), ""), 1);
+								IniFileHelper.GetStringValue(c.Value, "CharMacro", mt.ToString(), ""), 1);
 							nonreplaced = false;
 						}
 						else
@@ -2984,18 +3007,18 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 					AR.Rows.Add(origin, dicestr, result);
 
 				}
-				if (IniFileHelper.GetStringValue(c.Value.ToString(), "SideMarco", "SideName", "") != "")
+				if (IniFileHelper.GetStringValue(c.Value.ToString(), "SideMacro", "SideName", "") != "")
 				{
 					rollstr = key;
-					foreach (string str in IniFileHelper.GetAllItems(c.Value, "SideMarco"))
+					foreach (string str in IniFileHelper.GetAllItems(c.Value, "SideMacro"))
 					{
 						rollstr = rollstr.Replace(str.Split('=')[0], str.Split('=')[1]);
 					}
 					substr = rollstr.Split(':');
 					if (substr.Length > 1) AR.DefaultView.Sort = "Origin, Roll Desc";
 					//msg += String.Format("\n[{0}]：",
-					//		IniFileHelper.GetStringValue(c.Value.ToString(), "SideMarco", "SideName", CQ.CQCode_At(c.Key)));
-					origin = IniFileHelper.GetStringValue(c.Value.ToString(), "SideMarco", "SideName", CQ.CQCode_At(c.Key));
+					//		IniFileHelper.GetStringValue(c.Value.ToString(), "SideMacro", "SideName", CQ.CQCode_At(c.Key)));
+					origin = IniFileHelper.GetStringValue(c.Value.ToString(), "SideMacro", "SideName", CQ.CQCode_At(c.Key));
 					foreach (string s in substr)
 					{
 						//if (substr.Length > 1) msg += "\n";
@@ -3033,8 +3056,8 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 				if (CharBinding.ContainsKey(qq))
 				{
 					rollstr = key;
-					string reps = IniFileHelper.GetStringValue(CharBinding[qq], "MarcoReplace", "DefaultReplace", "");
-					foreach (string str in IniFileHelper.GetAllItems(CharBinding[qq], "MarcoReplace"))
+					string reps = IniFileHelper.GetStringValue(CharBinding[qq], "MacroReplace", "DefaultReplace", "");
+					foreach (string str in IniFileHelper.GetAllItems(CharBinding[qq], "MacroReplace"))
 					{
 						string[] strs = str.Split('=');
 						if (rollstr.Contains(strs[0]) && strs[0] != "DefaultReplace" && strs.Length > 1)
@@ -3054,10 +3077,10 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 						rollstr = rpre.Replace(rollstr, "@@@@");
 						foreach (Match mt in replaces)
 						{
-							if (IniFileHelper.GetStringValue(CharBinding[qq], "CharMarco", mt.ToString(), "") != "")
+							if (IniFileHelper.GetStringValue(CharBinding[qq], "CharMacro", mt.ToString(), "") != "")
 							{
 								rollstr = recov.Replace(rollstr,
-									IniFileHelper.GetStringValue(CharBinding[qq], "CharMarco", mt.ToString(), ""), 1);
+									IniFileHelper.GetStringValue(CharBinding[qq], "CharMacro", mt.ToString(), ""), 1);
 								nonreplaced = false;
 							}
 							else
@@ -3075,16 +3098,16 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 						rtn += Tools.Dice(s.Replace("[", "&#91;").Replace("]", "&#93;"));
 
 					}
-					if (IniFileHelper.GetStringValue(CharBinding[qq].ToString(), "SideMarco", "SideName", "") != "")
+					if (IniFileHelper.GetStringValue(CharBinding[qq].ToString(), "SideMacro", "SideName", "") != "")
 					{
 						rollstr = key;
-						foreach (string str in IniFileHelper.GetAllItems(CharBinding[qq], "SideMarco"))
+						foreach (string str in IniFileHelper.GetAllItems(CharBinding[qq], "SideMacro"))
 						{
 							rollstr = rollstr.Replace(str.Split('=')[0], str.Split('=')[1]);
 						}
 						substr = rollstr.Split(':');
 						rtn += String.Format("\n[{0}]：",
-								IniFileHelper.GetStringValue(CharBinding[qq].ToString(), "SideMarco", "SideName", CQ.CQCode_At(qq)));
+								IniFileHelper.GetStringValue(CharBinding[qq].ToString(), "SideMacro", "SideName", CQ.CQCode_At(qq)));
 						foreach (string s in substr)
 						{
 							if (substr.Length > 1) rtn += "\n";
