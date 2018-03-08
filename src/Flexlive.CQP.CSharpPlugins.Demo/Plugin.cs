@@ -4102,6 +4102,12 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 					case "Replace":
 						Replace();
 						return;
+					case "InKeyNRep":
+						InputKeyNameReplace(input);
+						return;
+					case "TmpValRep":
+						TempValueReplace();
+						return;
 					default:
 						step++;
 						return;
@@ -4398,6 +4404,50 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 		{
 			string oldstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-Old", "");
 			string newstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-New", "");
+			string item;
+			if (key == "")
+			{
+				foreach (string k in IniFileHelper.GetAllItemKeys(CharFile, sec))
+				{
+					item = IniFileHelper.GetStringValue(CharFile, sec, k, "");
+					IniFileHelper.WriteValue(CharFile, sec, k, item.Replace(oldstr, newstr));
+				}
+			}
+			else
+			{
+				item = IniFileHelper.GetStringValue(CharFile, sec, key, "");
+				IniFileHelper.WriteValue(CharFile, sec, key, item.Replace(oldstr, newstr));
+			}
+			step++;
+			Build();
+		}
+
+		public void InputKeyNameReplace(string input = "")
+		{
+			if (input == "")
+			{
+				Send(prompt);
+				pSession.InputHook = "CB";
+			}
+			else
+			{
+				string oldstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-Old", "");
+				string item;
+				item = IniFileHelper.GetStringValue(CharFile, sec, key, "");
+				IniFileHelper.WriteValue(CharFile, sec, key, item.Replace(oldstr, input));
+				step++;
+				Build();
+			}
+		}
+
+		public void TempValueReplace()
+		{
+			string fromvalue = IniFileHelper.GetStringValue(CharFile, "CharBuilder",
+				IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-From", ""), "");
+			string oldstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-Old", "");
+			string newstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-New", "")
+				.Replace("$Input", fromvalue);
+			
 			string item;
 			if (key == "")
 			{
