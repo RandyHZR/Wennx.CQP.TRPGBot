@@ -4066,13 +4066,17 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 			if (input != "") log.WriteLine(">>>>" + input);
 			while (IniFileHelper.GetStringValue(CharFile, "CharBuilder", step.ToString(), "") != "End") 
 			{
-				if (!Locate()) step++;
-				if (step > 100)
+				if (!Locate())
 				{
-					Send("人物建立失败，请联系DM手动建立人物");
-					pSession.InputHook = "";
-					return;
+					step++;
+					if (step > 100)
+					{
+						Send("人物建立失败，请联系DM手动建立人物");
+						pSession.InputHook = "";
+						return;
+					}
 				}
+				
 				switch (cmd)
 				{
 					case "InNumRep":
@@ -4107,6 +4111,9 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 						return;
 					case "TmpValRep":
 						TempValueReplace();
+						return;
+					case "Write":
+						Write();
 						return;
 					default:
 						step++;
@@ -4186,21 +4193,21 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 					pSession.InputHook = "CB";
 					return;
 				}
-				string oldstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-Old", "");
-				string newstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-New", "").Replace("$Input", num.ToString());
+				string oldstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-Old", "<Empty>");
+				string newstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-New", "$Input").Replace("$Input", num.ToString());
 				string item;
 				if (key == "")
 				{
 					foreach (string k in IniFileHelper.GetAllItemKeys(CharFile, sec))
 					{
-						item = IniFileHelper.GetStringValue(CharFile, sec, k, "");
-						IniFileHelper.WriteValue(CharFile, sec, k, item.Replace(oldstr, newstr));
+						item = IniFileHelper.GetStringValue(CharFile, sec, k, "<Empty>");
+						IniFileHelper.WriteValue(CharFile, sec, k, item.Replace(oldstr, newstr).Replace("<Empty>", ""));
 					}
 				}
 				else
 				{
-					item = IniFileHelper.GetStringValue(CharFile, sec, key, "");
-					IniFileHelper.WriteValue(CharFile, sec, key, item.Replace(oldstr, newstr));
+					item = IniFileHelper.GetStringValue(CharFile, sec, key, "<Empty>");
+					IniFileHelper.WriteValue(CharFile, sec, key, item.Replace(oldstr, newstr).Replace("<Empty>", ""));
 				}
 				step++;
 				Build();
@@ -4241,21 +4248,21 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 			}
 			else
 			{
-				string oldstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-Old", "");
-				string newstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-New", "").Replace("$Input", input);
+				string oldstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-Old", "<Empty>");
+				string newstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-New", "$Input").Replace("$Input", input);
 				string item;
 				if (key == "")
 				{
 					foreach (string k in IniFileHelper.GetAllItemKeys(CharFile, sec))
 					{
-						item = IniFileHelper.GetStringValue(CharFile, sec, k, "");
-						IniFileHelper.WriteValue(CharFile, sec, k, item.Replace(oldstr, newstr));
+						item = IniFileHelper.GetStringValue(CharFile, sec, k, "<Empty>");
+						IniFileHelper.WriteValue(CharFile, sec, k, item.Replace(oldstr, newstr).Replace("<Empty>", ""));
 					}
 				}
 				else
 				{
-					item = IniFileHelper.GetStringValue(CharFile, sec, key, "");
-					IniFileHelper.WriteValue(CharFile, sec, key, item.Replace(oldstr, newstr));
+					item = IniFileHelper.GetStringValue(CharFile, sec, key, "<Empty>");
+					IniFileHelper.WriteValue(CharFile, sec, key, item.Replace(oldstr, newstr).Replace("<Empty>", ""));
 				}
 				step++;
 				Build();
@@ -4340,21 +4347,21 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 						[new List<string>(IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-Choices", "")
 						.Split(';')).IndexOf(menu[input])];
 				}
-				string oldstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-Old", "");
-				string newstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-New", "").Replace("$Input", ip);
+				string oldstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-Old", "<Empty>");
+				string newstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-New", "$Input").Replace("$Input", ip);
 				string item;
 				if (key == "")
 				{
 					foreach (string k in IniFileHelper.GetAllItemKeys(CharFile, sec))
 					{
-						item = IniFileHelper.GetStringValue(CharFile, sec, k, "");
-						IniFileHelper.WriteValue(CharFile, sec, k, item.Replace(oldstr, newstr));
+						item = IniFileHelper.GetStringValue(CharFile, sec, k, "<Empty>");
+						IniFileHelper.WriteValue(CharFile, sec, k, item.Replace(oldstr, newstr).Replace("<Empty>", ""));
 					}
 				}
 				else
 				{
-					item = IniFileHelper.GetStringValue(CharFile, sec, key, "");
-					IniFileHelper.WriteValue(CharFile, sec, key, item.Replace(oldstr, newstr));
+					item = IniFileHelper.GetStringValue(CharFile, sec, key, "<Empty>");
+					IniFileHelper.WriteValue(CharFile, sec, key, item.Replace(oldstr, newstr).Replace("<Empty>", ""));
 				}
 				step++;
 				Build();
@@ -4402,21 +4409,21 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 
 		public void Replace()
 		{
-			string oldstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-Old", "");
-			string newstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-New", "");
+			string oldstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-Old", "<Empty>");
+			string newstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-New", "$Input");
 			string item;
 			if (key == "")
 			{
 				foreach (string k in IniFileHelper.GetAllItemKeys(CharFile, sec))
 				{
-					item = IniFileHelper.GetStringValue(CharFile, sec, k, "");
-					IniFileHelper.WriteValue(CharFile, sec, k, item.Replace(oldstr, newstr));
+					item = IniFileHelper.GetStringValue(CharFile, sec, k, "<Empty>");
+					IniFileHelper.WriteValue(CharFile, sec, k, item.Replace(oldstr, newstr).Replace("<Empty>", ""));
 				}
 			}
 			else
 			{
-				item = IniFileHelper.GetStringValue(CharFile, sec, key, "");
-				IniFileHelper.WriteValue(CharFile, sec, key, item.Replace(oldstr, newstr));
+				item = IniFileHelper.GetStringValue(CharFile, sec, key, "<Empty>");
+				IniFileHelper.WriteValue(CharFile, sec, key, item.Replace(oldstr, newstr).Replace("<Empty>", ""));
 			}
 			step++;
 			Build();
@@ -4431,10 +4438,11 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 			}
 			else
 			{
-				string oldstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-Old", "");
+				string oldstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-Old", "<Empty>");
 				string item;
 				item = IniFileHelper.GetStringValue(CharFile, sec, key, "");
-				IniFileHelper.WriteValue(CharFile, sec, key, item.Replace(oldstr, input));
+				IniFileHelper.WriteValue(CharFile, sec, key.Replace(oldstr, input), item);
+				IniFileHelper.DeleteKey(CharFile, sec, key);
 				step++;
 				Build();
 			}
@@ -4444,8 +4452,8 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 		{
 			string fromvalue = IniFileHelper.GetStringValue(CharFile, "CharBuilder",
 				IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-From", ""), "");
-			string oldstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-Old", "");
-			string newstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-New", "")
+			string oldstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-Old", "<Empty>");
+			string newstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-New", "$Input")
 				.Replace("$Input", fromvalue);
 			
 			string item;
@@ -4453,15 +4461,28 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 			{
 				foreach (string k in IniFileHelper.GetAllItemKeys(CharFile, sec))
 				{
-					item = IniFileHelper.GetStringValue(CharFile, sec, k, "");
-					IniFileHelper.WriteValue(CharFile, sec, k, item.Replace(oldstr, newstr));
+					item = IniFileHelper.GetStringValue(CharFile, sec, k, "<Empty>");
+					IniFileHelper.WriteValue(CharFile, sec, k, item.Replace(oldstr, newstr).Replace("<Empty>", ""));
 				}
 			}
 			else
 			{
-				item = IniFileHelper.GetStringValue(CharFile, sec, key, "");
-				IniFileHelper.WriteValue(CharFile, sec, key, item.Replace(oldstr, newstr));
+				item = IniFileHelper.GetStringValue(CharFile, sec, key, "<Empty>");
+				IniFileHelper.WriteValue(CharFile, sec, key, item.Replace(oldstr, newstr).Replace("<Empty>", ""));
 			}
+			step++;
+			Build();
+		}
+
+		public void Write()
+		{
+			if (key == "")
+			{
+				step++;
+				Build();
+				return;
+			}
+			IniFileHelper.WriteValue(CharFile, sec, key, IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-New", ""));
 			step++;
 			Build();
 		}
