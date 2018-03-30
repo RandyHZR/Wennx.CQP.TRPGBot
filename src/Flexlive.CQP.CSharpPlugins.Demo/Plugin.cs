@@ -12,6 +12,12 @@ using System.Drawing.Imaging;
 using System.Linq;
 using System.Text;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Security.Cryptography.X509Certificates;
+using System.Net.Security;
+using System.Linq;
+using System.Web;
+using System.Net.Mail;
+using System.Net.Mime;
 
 namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 {
@@ -784,7 +790,7 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 			{
 				Send(nya_normal[rd.Next(0, 8)], QQid);
 			}
-			if (IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "Nya", "Hate", "").Contains(QQid.ToString())) nya_mood -= 20;
+			if (IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "Nya", "Hate", "").Contains(QQid.ToString())) nya_mood -= 30;
 			else if (!IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "Nya", "Like", "").Contains(QQid.ToString())) nya_mood -= 5;
 		}
 
@@ -866,7 +872,10 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 				case ".t":
 					Send(time.ToString(), QQid);
 					break;
-				case ".time":
+				case ".an":
+					Announcement(QQid, msg);
+					break;
+					case ".time":
 					Send(time.ToString(), QQid);
 					break;
 				case ".path":
@@ -1015,6 +1024,29 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 
 		}
 
+		public void Announcement(long QQid, string msg)
+		{
+			CookieCollection cc = new CookieCollection();
+			Cookie c;
+			foreach (string s in CQ.GetCookies().Split(';'))
+			{
+				c = new Cookie(s.Split('=')[0].Replace(" ", ""), s.Split('=')[1], "/", ".qq.com");
+				cc.Add(c);
+			}
+			Tools.HttpResponsePostString("http://web.qun.qq.com/cgi-bin/announce/add_qun_notice",
+				string.Format("bkn={0}&qid={1}&title={2}&text={3}"
+				, Tools.GetBkn(cc["skey"].Value).ToString(), GroupID, Get_uft8("公告测试"), Get_uft8(msg.Replace(".an ", "")))
+				, cookies: cc);
+		}
+
+		public static string Get_uft8(string unicodeString)
+		{
+			UTF8Encoding utf8 = new UTF8Encoding();
+			Byte[] encodedBytes = utf8.GetBytes(unicodeString);
+			String decodedString = utf8.GetString(encodedBytes);
+			return decodedString;
+		}
+
 		ExcelPackage ep;
 		ExcelWorksheet LogTable;
 		int RecConter;
@@ -1075,6 +1107,7 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 				color.Clear();
 				face.Clear();
 				ep.SaveAs(new FileInfo(CSPath + "\\LogFiles\\" + LogFile + "-" + GroupID + ".xlsx"));
+				SendLog(QQid);
 				LogFile = "";
 				Logging = false;
 			}
@@ -1313,8 +1346,63 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 		}
 
 
+		public bool SendLog(long QQid)
+		{
+			MailMessage message = new MailMessage();
+			message.From = new MailAddress(IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "GeneralSetting", "QQID", "") + "@qq.com") ;
+			foreach (long qq in CharBinding.Keys)
+			{
+				message.To.Add(string.Format("{0}@qq.com", qq));
+			}
+			 //收件人邮箱地址可以是多个以实现群发
 
-		bool mapping = false;
+			message.Subject = "Log-" + LogFile;
+			message.Body = "LogFile";
+
+
+			string LFile = CSPath + "\\LogFiles\\" + LogFile + "-" + GroupID + ".xlsx";
+
+																//将文件进行转换成Attachments
+			Attachment data = new Attachment(LFile, MediaTypeNames.Application.Octet);
+			// Add time stamp information for the file.
+			ContentDisposition disposition = data.ContentDisposition;
+			disposition.CreationDate = System.IO.File.GetCreationTime(LFile);
+			disposition.ModificationDate = System.IO.File.GetLastWriteTime(LFile);
+			disposition.ReadDate = System.IO.File.GetLastAccessTime(LFile);
+
+			message.Attachments.Add(data);
+			ContentType ctype = new ContentType();
+
+			message.IsBodyHtml = true; //是否为html格式
+			message.Priority = MailPriority.Normal; //发送邮件的优先等级
+			SmtpClient sc = new SmtpClient();
+			sc.EnableSsl = true;
+			sc.Host = "smtp.qq.com"; //指定发送邮件的服务器地址或IP
+			sc.Port = 587; //指定发送邮件端口
+			sc.Credentials = new NetworkCredential(
+				IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "GeneralSetting", "QQID", "")+"@qq.com"
+				, IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "GeneralSetting", "QQPW", "")); //指定登录服务器的
+			CQ.SendPrivateMessage(QQid, string.Format("Log文件已发送\n收件人：{0}\n发件人：{1}"
+				, message.To.ToString(), message.From.ToString()));
+			try
+			{
+				sc.Send(message); //发送邮件
+			}
+
+			catch (SmtpException e)
+			{
+				Tools.SendDebugMessage(e.ToString());
+				Tools.SendDebugMessage(e.StatusCode);
+				return false;
+			}
+			return true;
+		}
+	
+
+
+
+
+	bool mapping = false;
 		Image orimap;
 		Image map;
 		Rectangle view;
@@ -3767,7 +3855,248 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 			name = name.Substring(0, 1).ToUpper() + name.Substring(1); //capitalize first letter
 			return name;
 		}
+
+		private static readonly string DefaultUserAgent =
+				"Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Safari/537.36";
+
+		public static long GetBkn(string skey)
+		{
+			var hash = 5381;
+			for (int i = 0, len = skey.Length; i < len; ++i)
+				hash += (hash << 5) + (int)skey[i];
+			return hash & 2147483647;
+		}
+
+		/// <summary>
+		/// 测试网络是否可用
+		/// </summary>
+		/// <returns></returns>
+		public static bool TestNetworkStatus()
+		{
+			var urls = new string[] { "http://www.baidu.com", "http://www.qq.com/" };
+			int count = 0;
+			foreach (var url in urls)
+			{
+				try
+				{
+					var resp = HttpResponseGet(url, method: "HEAD");
+					if (resp.StatusCode == HttpStatusCode.OK)
+					{
+						count++;
+					}
+				}
+				catch { }
+			}
+			return count > 0;
+		}
+
+		/// <summary>  
+		/// 创建GET方式的HTTP请求  
+		/// </summary>  
+		/// <param name="url">请求的URL</param>  
+		/// <param name="timeout">请求的超时时间</param>  
+		/// <param name="userAgent">请求的客户端浏览器信息，可以为空</param>  
+		/// <param name="cookies">随同HTTP请求发送的Cookie信息，如果不需要身份验证可以为空</param>  
+		/// <returns></returns>  
+		public static string HttpResponseGetString(string url, string getData = null, int? timeout = null, string userAgent = null,
+			CookieCollection cookies = null, string method = "GET")
+		{
+			using (var response = HttpResponseGet(url, getData, timeout, userAgent, cookies, method))
+			{
+				return GetResponseString(response);
+			}
+		}
+
+		/// <summary>  
+		/// 创建GET方式的HTTP请求  
+		/// </summary>  
+		/// <param name="url">请求的URL</param>  
+		/// <param name="timeout">请求的超时时间</param>  
+		/// <param name="userAgent">请求的客户端浏览器信息，可以为空</param>  
+		/// <param name="cookies">随同HTTP请求发送的Cookie信息，如果不需要身份验证可以为空</param>  
+		/// <returns></returns>  
+		public static HttpWebResponse HttpResponseGet(string url, string getData = null, int? timeout = null, string userAgent = null,
+			CookieCollection cookies = null, string method = "GET")
+		{
+			if (string.IsNullOrEmpty(url))
+			{
+				throw new ArgumentNullException("url");
+			}
+			if (getData != null)
+			{
+				url = url.Contains('?') ? url.Trim('&') : url + "?";
+				url += getData.Trim('&');
+			}
+			HttpWebRequest request = null;
+			//如果是发送HTTPS请求  
+			if (url.StartsWith("https", StringComparison.OrdinalIgnoreCase))
+			{
+				ServicePointManager.ServerCertificateValidationCallback =
+					new RemoteCertificateValidationCallback(CheckValidationResult);
+				request = WebRequest.Create(url) as HttpWebRequest;
+				request.ProtocolVersion = HttpVersion.Version10;
+			}
+			else
+			{
+				request = WebRequest.Create(url) as HttpWebRequest;
+			}
+			request.Method = method;
+			if (!string.IsNullOrEmpty(userAgent))
+			{
+				request.UserAgent = userAgent;
+			}
+			else
+			{
+				request.UserAgent = DefaultUserAgent;
+			}
+			if (timeout.HasValue)
+			{
+				request.Timeout = timeout.Value;
+			}
+			if (cookies != null)
+			{
+				request.CookieContainer = new CookieContainer();
+				request.CookieContainer.Add(cookies);
+			}
+			return request.GetResponse() as HttpWebResponse;
+		}
+
+		/// <summary>  
+		/// 创建POST方式的HTTP请求  
+		/// </summary>  
+		/// <param name="url">请求的URL</param>  
+		/// <param name="parameters">随同请求POST的参数名称及参数值字典</param>  
+		/// <param name="timeout">请求的超时时间</param>  
+		/// <param name="userAgent">请求的客户端浏览器信息，可以为空</param>  
+		/// <param name="requestEncoding">发送HTTP请求时所用的编码</param>  
+		/// <param name="cookies">随同HTTP请求发送的Cookie信息，如果不需要身份验证可以为空</param>  
+		/// <returns></returns>  
+		public static string HttpResponsePostString(string url, string postData = null,
+			Encoding requestEncoding = null, int? timeout = null, string userAgent = null,
+			CookieCollection cookies = null, bool sendJson = false, bool sendXml = false)
+		{
+			using (var response = HttpResponsePost(url, postData, requestEncoding, timeout, userAgent, cookies, sendJson, sendXml))
+			{
+				return GetResponseString(response);
+			}
+		}
+
+		/// <summary>  
+		/// 创建POST方式的HTTP请求  
+		/// </summary>  
+		/// <param name="url">请求的URL</param>  
+		/// <param name="parameters">随同请求POST的参数名称及参数值字典</param>  
+		/// <param name="timeout">请求的超时时间</param>  
+		/// <param name="userAgent">请求的客户端浏览器信息，可以为空</param>  
+		/// <param name="requestEncoding">发送HTTP请求时所用的编码</param>  
+		/// <param name="cookies">随同HTTP请求发送的Cookie信息，如果不需要身份验证可以为空</param>  
+		/// <returns></returns>  
+		public static HttpWebResponse HttpResponsePost(string url, string postData = null,
+			Encoding requestEncoding = null, int? timeout = null, string userAgent = null,
+			CookieCollection cookies = null, bool sendJson = false, bool sendXml = false)
+		{
+			if (string.IsNullOrEmpty(url))
+			{
+				throw new ArgumentNullException("url");
+			}
+			if (requestEncoding == null)
+			{
+				requestEncoding = Encoding.UTF8;
+			}
+			HttpWebRequest request = null;
+			//如果是发送HTTPS请求  
+			if (url.StartsWith("https", StringComparison.OrdinalIgnoreCase))
+			{
+				ServicePointManager.ServerCertificateValidationCallback =
+					new RemoteCertificateValidationCallback(CheckValidationResult);
+				request = WebRequest.Create(url) as HttpWebRequest;
+				request.ProtocolVersion = HttpVersion.Version10;
+			}
+			else
+			{
+				request = WebRequest.Create(url) as HttpWebRequest;
+			}
+			request.Method = "POST";
+			if (sendJson)
+			{
+				request.ContentType = "application/json";
+			}
+			else if (sendXml)
+			{
+				request.ContentType = "application/xml";
+			}
+			else
+			{
+				request.ContentType = "application/x-www-form-urlencoded";
+			}
+			if (!string.IsNullOrEmpty(userAgent))
+			{
+				request.UserAgent = userAgent;
+			}
+			else
+			{
+				request.UserAgent = DefaultUserAgent;
+			}
+
+			if (timeout.HasValue)
+			{
+				request.Timeout = timeout.Value;
+			}
+			if (cookies != null)
+			{
+				request.CookieContainer = new CookieContainer();
+				request.CookieContainer.Add(cookies);
+			}
+			//如果需要POST数据  
+			if (!string.IsNullOrEmpty(postData))
+			{
+				byte[] data = requestEncoding.GetBytes(postData);
+				using (Stream stream = request.GetRequestStream())
+				{
+					stream.Write(data, 0, data.Length);
+				}
+			}
+			return request.GetResponse() as HttpWebResponse;
+		}
+
+		/// <summary>
+		/// 从Response中获取字符串结果
+		/// </summary>
+		/// <param name="response"></param>
+		/// <returns></returns>
+		private static string GetResponseString(HttpWebResponse response)
+		{
+			Stream stream = response.GetResponseStream();
+			if (stream != null)
+			{
+				StreamReader sr = new StreamReader(stream);
+				string result = sr.ReadToEnd();
+
+				stream.Close();
+				stream.Dispose();
+				sr.Close();
+				sr.Dispose();
+
+				return result;
+			}
+			return string.Empty;
+		}
+
+		/// <summary>
+		/// 屏蔽https的服务器证书验证,总是返回true
+		/// </summary>
+		/// <param name="sender"></param>
+		/// <param name="certificate"></param>
+		/// <param name="chain"></param>
+		/// <param name="errors"></param>
+		/// <returns></returns>
+		private static bool CheckValidationResult(object sender, X509Certificate certificate, X509Chain chain,
+			SslPolicyErrors errors)
+		{
+			return true; //总是接受  
+		}
 	}
+
 
 	class RandomCreator
 	{
