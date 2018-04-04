@@ -463,8 +463,9 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 
 				if (NewMenu.Count == 1)
 				{
-					File.Copy(NewMenu[0].FullName, CQPath + "\\data\\image\\" + NewMenu[0].Name, true);
-					Send(CQ.CQCode_Image(NewMenu[0].Name.Replace("&", "&amp;").Replace(",", "&#44;").Replace("[", "&#91;").Replace("]", "&#93;")));
+					string file = rd.Next(999999).ToString("000000") + NewMenu[0].Name;
+					File.Copy(NewMenu[0].FullName, CQPath + "\\data\\image\\" + file, true);
+					Send(CQ.CQCode_Image(file.Replace("&", "&amp;").Replace(",", "&#44;").Replace("[", "&#91;").Replace("]", "&#93;")));
 					SearchMenu.Remove(QQid);
 				}
 				else
@@ -492,8 +493,9 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 			else
 			{
 				FileInfo sel = SearchMenu[QQid][res - 1];
-				File.Copy(sel.FullName, CQPath + "\\data\\image\\" + sel.Name, true);
-				Send(CQ.CQCode_Image(sel.Name.Replace("&", "&amp;").Replace(",", "&#44;").Replace("[", "&#91;").Replace("]", "&#93;")));
+				string file = rd.Next(999999).ToString("000000") + sel.Name;
+				File.Copy(sel.FullName, CQPath + "\\data\\image\\" + file, true);
+				Send(CQ.CQCode_Image(file.Replace("&", "&amp;").Replace(",", "&#44;").Replace("[", "&#91;").Replace("]", "&#93;")));
 				SearchMenu.Remove(QQid);
 			}
 		}
@@ -1353,7 +1355,7 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 		public bool SendLog(long QQid)
 		{
 			MailMessage message = new MailMessage();
-			message.From = new MailAddress(IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "GeneralSetting", "QQID", "") + "@qq.com") ;
+			message.From = new MailAddress(IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "GeneralSetting", "Mailbox", "")) ;
 			foreach (long qq in CharBinding.Keys)
 			{
 				message.To.Add(string.Format("{0}@qq.com", qq));
@@ -1381,10 +1383,10 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 			message.Priority = MailPriority.Normal; //发送邮件的优先等级
 			SmtpClient sc = new SmtpClient();
 			sc.EnableSsl = true;
-			sc.Host = "smtp.qq.com"; //指定发送邮件的服务器地址或IP
-			sc.Port = 587; //指定发送邮件端口
+			sc.Host = IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "GeneralSetting", "SMTPServer", ""); //指定发送邮件的服务器地址或IP
+			sc.Port = int.Parse(IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "GeneralSetting", "SMTPPort", "")); //指定发送邮件端口
 			sc.Credentials = new NetworkCredential(
-				IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "GeneralSetting", "QQID", "")+"@qq.com"
+				IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "GeneralSetting", "Mailbox", "")
 				, IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "GeneralSetting", "MailPW", "")); //指定登录服务器的
 			Send(string.Format("Log文件已发送\n收件人：{0}\n发件人：{1}", message.To.ToString(), message.From.ToString()));
 			try
@@ -1906,8 +1908,9 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 
 				if (NewMenu.Count == 1)
 				{
-					File.Copy(NewMenu[0].FullName, CQPath + "\\data\\image\\" + NewMenu[0].Name, true);
-					Send(CQ.CQCode_Image(NewMenu[0].Name.Replace("&", "&amp;").Replace(",", "&#44;").Replace("[", "&#91;").Replace("]", "&#93;")));
+					string file = rd.Next(999999).ToString("000000") + NewMenu[0].Name;
+					File.Copy(NewMenu[0].FullName, CQPath + "\\data\\image\\" + file, true);
+					Send(CQ.CQCode_Image(file.Replace("&", "&amp;").Replace(",", "&#44;").Replace("[", "&#91;").Replace("]", "&#93;")));
 					SearchMenu.Remove(QQid);
 				}
 				else
@@ -1936,8 +1939,9 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 			{
 				CQ.DeleteMsg(msgID);
 				FileInfo sel = SearchMenu[QQid][res - 1];
-				File.Copy(sel.FullName, CQPath + "\\data\\image\\" + sel.Name, true);
-				Send(CQ.CQCode_Image(sel.Name.Replace("&", "&amp;").Replace(",", "&#44;").Replace("[", "&#91;").Replace("]", "&#93;")));
+				string file = rd.Next(999999).ToString("000000") + sel.Name;
+				File.Copy(sel.FullName, CQPath + "\\data\\image\\" + file, true);
+				Send(CQ.CQCode_Image(file.Replace("&", "&amp;").Replace(",", "&#44;").Replace("[", "&#91;").Replace("]", "&#93;")));
 				SearchMenu.Remove(QQid);
 			}
 		}
@@ -2092,7 +2096,7 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 		public bool CharSend(long QQid)
 		{
 			MailMessage message = new MailMessage();
-			message.From = new MailAddress(IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "GeneralSetting", "QQID", "") + "@qq.com");
+			message.From = new MailAddress(IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "GeneralSetting", "Mailbox", ""));
 			message.To.Add(string.Format("{0}@qq.com", QQid));
 			//收件人邮箱地址可以是多个以实现群发
 
@@ -2118,10 +2122,10 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 			message.Priority = MailPriority.Normal; //发送邮件的优先等级
 			SmtpClient sc = new SmtpClient();
 			sc.EnableSsl = true;
-			sc.Host = "smtp.qq.com"; //指定发送邮件的服务器地址或IP
-			sc.Port = 587; //指定发送邮件端口
+			sc.Host = IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "GeneralSetting", "SMTPServer", ""); //指定发送邮件的服务器地址或IP
+			sc.Port = int.Parse(IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "GeneralSetting", "SMTPPort", "")); //指定发送邮件端口
 			sc.Credentials = new NetworkCredential(
-				IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "GeneralSetting", "QQID", "") + "@qq.com"
+				IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "GeneralSetting", "Mailbox", "")
 				, IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "GeneralSetting", "MailPW", "")); //指定登录服务器的
 			Send(IniFileHelper.GetStringValue(CharBinding[QQid], "CharInfo", "CharID", "")
 				+ "-" + IniFileHelper.GetStringValue(CharBinding[QQid], "CharInfo", "CharName", "")+"角色卡已发送至邮箱");
