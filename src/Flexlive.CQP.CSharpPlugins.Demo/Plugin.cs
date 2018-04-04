@@ -807,6 +807,7 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 		public void GroupMessageHandler(long QQid, string msg, int MsgID, bool subCmd = false)
 		{
 			if (msg.StartsWith("喵")) Nya(QQid, msg, MsgID);
+			
 			if (Logging && !subCmd) Log(msg, QQid);
 			if (IsAdmin(QQid) && msg.StartsWith("+"))
 			{
@@ -967,6 +968,9 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 					break;
 				case ".cdis":
 					CharDisbinding(QQid, msg);
+					break;
+				case ".csend":
+					CharSend(QQid);
 					break;
 				case ".m":
 					Memory(QQid, msg, MsgID);
@@ -1366,9 +1370,9 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 			Attachment data = new Attachment(LFile, MediaTypeNames.Application.Octet);
 			// Add time stamp information for the file.
 			ContentDisposition disposition = data.ContentDisposition;
-			disposition.CreationDate = System.IO.File.GetCreationTime(LFile);
-			disposition.ModificationDate = System.IO.File.GetLastWriteTime(LFile);
-			disposition.ReadDate = System.IO.File.GetLastAccessTime(LFile);
+			disposition.CreationDate = File.GetCreationTime(LFile);
+			disposition.ModificationDate = File.GetLastWriteTime(LFile);
+			disposition.ReadDate = File.GetLastAccessTime(LFile);
 
 			message.Attachments.Add(data);
 			ContentType ctype = new ContentType();
@@ -1381,9 +1385,8 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 			sc.Port = 587; //指定发送邮件端口
 			sc.Credentials = new NetworkCredential(
 				IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "GeneralSetting", "QQID", "")+"@qq.com"
-				, IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "GeneralSetting", "QQPW", "")); //指定登录服务器的
-			CQ.SendPrivateMessage(QQid, string.Format("Log文件已发送\n收件人：{0}\n发件人：{1}"
-				, message.To.ToString(), message.From.ToString()));
+				, IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "GeneralSetting", "MailPW", "")); //指定登录服务器的
+			Send(string.Format("Log文件已发送\n收件人：{0}\n发件人：{1}", message.To.ToString(), message.From.ToString()));
 			try
 			{
 				sc.Send(message); //发送邮件
@@ -1853,6 +1856,15 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 		public void Search(long QQid, string msg, int msgID)
 		{
 			msg = msg.Replace(".s", "").Replace("。s", "");
+			string defaultkw = IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "G" + GroupID + "_Settings", "DefaultSearchSet", "");
+			if (msg.Contains(" ^ "))
+			{
+				msg.Replace(" ^ ", "");
+			}
+			else
+			{
+				msg += " " + defaultkw;
+			}
 			string[] msgs = msg.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
 			DirectoryInfo d = new DirectoryInfo(CSPath + "\\Data");
 			if (lastSearchMenu.ContainsKey(QQid))
@@ -2075,6 +2087,56 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 				Send(string.Format("{0} 解除绑定了当前角色", CQ.CQCode_At(QQid)), QQid);
 			}
 			
+		}
+
+		public bool CharSend(long QQid)
+		{
+			MailMessage message = new MailMessage();
+			message.From = new MailAddress(IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "GeneralSetting", "QQID", "") + "@qq.com");
+			message.To.Add(string.Format("{0}@qq.com", QQid));
+			//收件人邮箱地址可以是多个以实现群发
+
+			message.Subject = "CharFile-" + IniFileHelper.GetStringValue(CharBinding[QQid], "CharInfo", "CharID", "")
+				+"-"+ IniFileHelper.GetStringValue(CharBinding[QQid], "CharInfo", "CharName", "");
+			message.Body = "CharFile";
+
+
+			string LFile = CharBinding[QQid];
+
+			//将文件进行转换成Attachments
+			Attachment data = new Attachment(LFile, MediaTypeNames.Application.Octet);
+			// Add time stamp information for the file.
+			ContentDisposition disposition = data.ContentDisposition;
+			disposition.CreationDate = File.GetCreationTime(LFile);
+			disposition.ModificationDate = File.GetLastWriteTime(LFile);
+			disposition.ReadDate = File.GetLastAccessTime(LFile);
+
+			message.Attachments.Add(data);
+			ContentType ctype = new ContentType();
+
+			message.IsBodyHtml = true; //是否为html格式
+			message.Priority = MailPriority.Normal; //发送邮件的优先等级
+			SmtpClient sc = new SmtpClient();
+			sc.EnableSsl = true;
+			sc.Host = "smtp.qq.com"; //指定发送邮件的服务器地址或IP
+			sc.Port = 587; //指定发送邮件端口
+			sc.Credentials = new NetworkCredential(
+				IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "GeneralSetting", "QQID", "") + "@qq.com"
+				, IniFileHelper.GetStringValue(CSPath + "\\Config.ini", "GeneralSetting", "MailPW", "")); //指定登录服务器的
+			Send(IniFileHelper.GetStringValue(CharBinding[QQid], "CharInfo", "CharID", "")
+				+ "-" + IniFileHelper.GetStringValue(CharBinding[QQid], "CharInfo", "CharName", "")+"角色卡已发送至邮箱");
+			try
+			{
+				sc.Send(message); //发送邮件
+			}
+
+			catch (SmtpException e)
+			{
+				Tools.SendDebugMessage(e.ToString());
+				Tools.SendDebugMessage(e.StatusCode);
+				return false;
+			}
+			return true;
 		}
 
 		public void CharModify(long QQid, string key, string value)
@@ -4530,13 +4592,13 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 					foreach (string k in IniFileHelper.GetAllItemKeys(CharFile, sec))
 					{
 						item = IniFileHelper.GetStringValue(CharFile, sec, k, "<Empty>");
-						IniFileHelper.WriteValue(CharFile, sec, k, item.Replace(oldstr, newstr).Replace("<Empty>", ""));
+						IniFileHelper.WriteValue(CharFile, sec, k, Regex.Replace(item, oldstr, newstr.Replace("$", "$$")).Replace("<Empty>", ""));
 					}
 				}
 				else
 				{
 					item = IniFileHelper.GetStringValue(CharFile, sec, key, "<Empty>");
-					IniFileHelper.WriteValue(CharFile, sec, key, item.Replace(oldstr, newstr).Replace("<Empty>", ""));
+					IniFileHelper.WriteValue(CharFile, sec, key, Regex.Replace(item, oldstr, newstr.Replace("$", "$$")).Replace("<Empty>", ""));
 				}
 				step++;
 				Build();
@@ -4585,13 +4647,13 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 					foreach (string k in IniFileHelper.GetAllItemKeys(CharFile, sec))
 					{
 						item = IniFileHelper.GetStringValue(CharFile, sec, k, "<Empty>");
-						IniFileHelper.WriteValue(CharFile, sec, k, item.Replace(oldstr, newstr).Replace("<Empty>", ""));
+						IniFileHelper.WriteValue(CharFile, sec, k, Regex.Replace(item, oldstr, newstr.Replace("$", "$$")).Replace("<Empty>", ""));
 					}
 				}
 				else
 				{
 					item = IniFileHelper.GetStringValue(CharFile, sec, key, "<Empty>");
-					IniFileHelper.WriteValue(CharFile, sec, key, item.Replace(oldstr, newstr).Replace("<Empty>", ""));
+					IniFileHelper.WriteValue(CharFile, sec, key, Regex.Replace(item, oldstr, newstr.Replace("$", "$$")).Replace("<Empty>", ""));
 				}
 				step++;
 				Build();
@@ -4684,13 +4746,13 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 					foreach (string k in IniFileHelper.GetAllItemKeys(CharFile, sec))
 					{
 						item = IniFileHelper.GetStringValue(CharFile, sec, k, "<Empty>");
-						IniFileHelper.WriteValue(CharFile, sec, k, item.Replace(oldstr, newstr).Replace("<Empty>", ""));
+						IniFileHelper.WriteValue(CharFile, sec, k, Regex.Replace(item, oldstr, newstr.Replace("$", "$$")).Replace("<Empty>", ""));
 					}
 				}
 				else
 				{
 					item = IniFileHelper.GetStringValue(CharFile, sec, key, "<Empty>");
-					IniFileHelper.WriteValue(CharFile, sec, key, item.Replace(oldstr, newstr).Replace("<Empty>", ""));
+					IniFileHelper.WriteValue(CharFile, sec, key, Regex.Replace(item, oldstr, newstr.Replace("$", "$$")).Replace("<Empty>", ""));
 				}
 				step++;
 				Build();
@@ -4739,20 +4801,20 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 		public void Replace()
 		{
 			string oldstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-Old", "<Empty>");
-			string newstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-New", "$Input");
+			string newstr = IniFileHelper.GetStringValue(CharFile, "CharBuilder", step + "-New", "");
 			string item;
 			if (key == "")
 			{
 				foreach (string k in IniFileHelper.GetAllItemKeys(CharFile, sec))
 				{
 					item = IniFileHelper.GetStringValue(CharFile, sec, k, "<Empty>");
-					IniFileHelper.WriteValue(CharFile, sec, k, item.Replace(oldstr, newstr).Replace("<Empty>", ""));
+					IniFileHelper.WriteValue(CharFile, sec, k, Regex.Replace(item, oldstr, newstr.Replace("$", "$$")).Replace("<Empty>", ""));
 				}
 			}
 			else
 			{
 				item = IniFileHelper.GetStringValue(CharFile, sec, key, "<Empty>");
-				IniFileHelper.WriteValue(CharFile, sec, key, item.Replace(oldstr, newstr).Replace("<Empty>", ""));
+				IniFileHelper.WriteValue(CharFile, sec, key, Regex.Replace(item, oldstr, newstr.Replace("$", "$$")).Replace("<Empty>", ""));
 			}
 			step++;
 			Build();
@@ -4791,13 +4853,13 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 				foreach (string k in IniFileHelper.GetAllItemKeys(CharFile, sec))
 				{
 					item = IniFileHelper.GetStringValue(CharFile, sec, k, "<Empty>");
-					IniFileHelper.WriteValue(CharFile, sec, k, item.Replace(oldstr, newstr).Replace("<Empty>", ""));
+					IniFileHelper.WriteValue(CharFile, sec, k, Regex.Replace(item, oldstr, newstr.Replace("$", "$$")).Replace("<Empty>", ""));
 				}
 			}
 			else
 			{
 				item = IniFileHelper.GetStringValue(CharFile, sec, key, "<Empty>");
-				IniFileHelper.WriteValue(CharFile, sec, key, item.Replace(oldstr, newstr).Replace("<Empty>", ""));
+				IniFileHelper.WriteValue(CharFile, sec, key, Regex.Replace(item, oldstr, newstr.Replace("$", "$$")).Replace("<Empty>", ""));
 			}
 			step++;
 			Build();
@@ -4867,7 +4929,7 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 
 		public void Edit(string input = "")
 		{
-			input = input.Replace("&#91;", "[").Replace("&#93;", "]").Replace("&amp;", "&");
+			input = input.Replace("&#91;", "[").Replace("&#93;", "]").Replace("&#44;", ",").Replace("&amp;", "&");
 			if (CharFile == "")
 			{
 				if (input == "")
@@ -4903,6 +4965,15 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 							break;
 						case "查看文件":
 							ViewFile();
+							break;
+						case "覆写文件":
+							WriteFile(input);
+							break;
+						case "备份文件":
+							Backup();
+							break;
+						case "回滚至上次备份":
+							RollBack();
 							break;
 						case "修改内容":
 							EditValue(input);
@@ -5004,7 +5075,6 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 					msg = string.Format("{0}-{1}项目前为：\n{2}\n", sec, key,
 						IniFileHelper.GetStringValue(CharFile, sec, key, "")
 						.Replace("CT:", "计数器：").Replace("LT:", "列表："));
-					menu.Add("view", "查看文件");
 
 					menu.Add("1", "修改内容");
 					menu.Add("2", "追加内容");
@@ -5032,6 +5102,10 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 					}
 					menu.Add("0", "返回上一级");
 					menu.Add("del", "删除该项");
+					menu.Add("view", "查看文件");
+					menu.Add("write", "覆写文件");
+					menu.Add("backup", "备份文件");
+					if (File.Exists(CharFile + ".bak")) menu.Add("rollback", "回滚至上次备份");
 					SendMenu(msg, "\n输入【.end】结束编辑\n选择要进行的操作：");
 				}
 				else
@@ -5046,6 +5120,9 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 					menu.Add("0", "返回上一级");
 					menu.Add("add", "添加项");
 					menu.Add("view", "查看文件");
+					menu.Add("write", "覆写文件");
+					menu.Add("backup", "备份文件");
+					if (File.Exists(CharFile + ".bak")) menu.Add("rollback", "回滚至上次备份");
 					SendMenu(msg, "\n输入序号以编辑指定项目，或输入指令选择要进行的操作：");
 				}
 			}
@@ -5059,7 +5136,10 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 					i++;
 				}
 				menu.Add("view", "查看文件");
-				SendMenu(msg, "\n输入序号进入对应分区：");
+				menu.Add("write", "覆写文件");
+				menu.Add("backup", "备份文件");
+				if (File.Exists(CharFile + ".bak")) menu.Add("rollback", "回滚至上次备份");
+				SendMenu(msg, "\n输入序号进入对应分区，或输入指令选择要进行的操作：");
 			}
 
 		}
@@ -5071,6 +5151,60 @@ namespace Dicecat.CQP.CSharpPlugins.TRPGBot
 			Send(sr.ReadToEnd());
 			sr.Close();
 			fs.Close();
+			ShowMenu();
+		}
+
+		public void WriteFile(string input)
+		{
+			if (input == "覆写文件")
+			{
+				Send("请粘入要覆写的内容");
+			}
+			else
+			{
+				if (v == "")
+				{
+					v = input;
+					Send(string.Format("你将要覆写文件，原版文件将备份供回滚，旧的备份文件将被覆盖\n确认请输入1，取消请输入任意其他字符"));
+				}
+				else
+				{
+					if (input == "1")
+					{
+						File.Copy(CharFile, CharFile + ".bak", true);
+						FileStream fs = new FileStream(CharFile, FileMode.Create);
+						StreamWriter sw = new StreamWriter(fs, Encoding.Default);
+						Send(v);
+						sw.Write(v);
+						sw.Close();
+						fs.Close();
+						Send("覆写完成，原版文件已备份");
+					}
+					else
+					{
+						Send("覆写已取消");
+					}
+					v = "";
+					ShowMenu();
+				}
+
+			}
+
+		}
+
+		public void Backup()
+		{
+			File.Copy(CharFile, CharFile + ".bak", true);
+			Send("备份完成");
+			ShowMenu();
+		}
+
+		public void RollBack()
+		{
+			File.Copy(CharFile, CharFile + ".bk", true);
+			File.Copy(CharFile + ".bak", CharFile, true);
+			File.Copy(CharFile + ".bk", CharFile + ".bak", true);
+			Send("回滚已完成，再次回滚撤销本次操作");
 			ShowMenu();
 		}
 
